@@ -5,3 +5,4 @@ third_party/JUCE/
 *.user
 .DS_Store
 dist/
+build.log
