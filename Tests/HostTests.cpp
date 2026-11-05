@@ -156,6 +156,66 @@ int main()
     mid.deleteFile();
     wav.deleteFile();
 
+    // ---- robustness: odd block sizes, re-prepare, empty state, mono layout, zero-length blocks
+    {
+        ChopForgeProcessor r;
+        FakePlayHead ph2;
+        r.setPlayHead (&ph2);
+        r.setStateInformation (state.getData(), (int) state.getSize());
+        for (double rate : { 44100.0, 96000.0 })
+        {
+            for (int bs : { 1, 7, 64, 1000, 4096 })
+            {
+                r.prepareToPlay (rate, bs);
+                r.setRateAndBufferSizeDetails (rate, bs);
+                juce::AudioBuffer<float> b (2, bs);
+                juce::MidiBuffer m;
+                double ppq = 0.0;
+                for (int i = 0; i < 40; ++i)
+                {
+                    b.clear();
+                    ph2.ppq = ppq;
+                    if (i == 5) m.addEvent (juce::MidiMessage::noteOn (1, 40, (juce::uint8) 90), 0);
+                    r.processBlock (b, m);
+                    m.clear();
+                    ppq += bs / rate * 2.0;
+                    for (int ch = 0; ch < 2; ++ch)
+                        for (int k = 0; k < bs; ++k)
+                            CHECK (std::isfinite (b.getSample (ch, k)) && std::abs (b.getSample (ch, k)) < 4.0f);
+                }
+                juce::AudioBuffer<float> empty (2, 0);
+                r.processBlock (empty, m);
+            }
+        }
+        // empty / garbage state must be harmless
+        r.setStateInformation ("not xml", 7);
+        juce::MemoryBlock none;
+        r.getStateInformation (none);
+        CHECK (none.getSize() > 0);
+        ChopForgeProcessor fresh;
+        juce::MemoryBlock freshState;
+        fresh.getStateInformation (freshState);
+        r.setStateInformation (freshState.getData(), (int) freshState.getSize());
+
+        // mono in / mono out layout is accepted, stereo in / mono out too, quad is refused
+        juce::AudioProcessor::BusesLayout mono;
+        mono.inputBuses.add (juce::AudioChannelSet::mono());
+        mono.outputBuses.add (juce::AudioChannelSet::mono());
+        CHECK (r.checkBusesLayoutSupported (mono));
+        juce::AudioProcessor::BusesLayout quad;
+        quad.inputBuses.add (juce::AudioChannelSet::quadraphonic());
+        quad.outputBuses.add (juce::AudioChannelSet::quadraphonic());
+        CHECK (! r.checkBusesLayoutSupported (quad));
+        CHECK (r.setBusesLayout (mono));
+        r.prepareToPlay (48000.0, 256);
+        juce::AudioBuffer<float> mb (1, 256);
+        juce::MidiBuffer mm;
+        mm.addEvent (juce::MidiMessage::noteOn (1, 36, (juce::uint8) 100), 0);
+        mb.clear();
+        r.processBlock (mb, mm);
+        for (int k = 0; k < 256; ++k) CHECK (std::isfinite (mb.getSample (0, k)));
+    }
+
     if (failures == 0) std::cout << "All host tests passed." << std::endl;
     else std::cerr << failures << " check(s) failed." << std::endl;
     return failures == 0 ? 0 : 1;
