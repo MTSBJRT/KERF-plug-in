@@ -105,6 +105,15 @@ The *Clock* setting decides who drives the sequencer: the host transport, an int
 free-running clock (*Free BPM*), or nothing (MIDI only). In the Standalone app the free
 clock is used automatically.
 
+### In Ableton Live 11 / 12
+
+- *Preferences > Plug-Ins*: enable *Use VST3 Plug-In System Folders* (and *Use Audio
+  Units* for the AU). Alt-click *Rescan* for a full scan.
+- Drop ChopForge on an audio track. The sequencer follows Live's transport and tempo.
+- To play slices from a MIDI track: set its *MIDI To* to the audio track, then pick
+  *ChopForge* in the second menu. C1 = slice 1.
+- A step-by-step test checklist is in `docs/test-ableton.md` (in French).
+
 ### In Native Instruments Maschine 3
 
 1. After installing, open *Preferences > Plug-ins > Locations* and click *Rescan*.
