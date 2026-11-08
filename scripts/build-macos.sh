@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds ChopForge on macOS (Apple Silicon or Intel), runs the tests and installs
+# Builds Kerf on macOS (Apple Silicon or Intel), runs the tests and installs
 # the VST3 and AU into the user plug-in folders.
 #
 #   ./scripts/build-macos.sh            # release build + install
@@ -40,21 +40,21 @@ cmake -S "$ROOT" -B "$BUILD" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_OSX_ARCHITECTURES="$ARCHS" \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
-    -DCHOPFORGE_COPY_PLUGIN=$([ $INSTALL = 1 ] && echo ON || echo OFF)
+    -DKERF_COPY_PLUGIN=$([ $INSTALL = 1 ] && echo ON || echo OFF)
 
 echo "==> Building"
-cmake --build "$BUILD" --target ChopForge_VST3 ChopForge_AU ChopForge_Standalone ChopForgeTests ChopForgeHostTests
+cmake --build "$BUILD" --target Kerf_VST3 Kerf_AU Kerf_Standalone KerfTests KerfHostTests
 
 echo "==> Running tests"
-"$BUILD/ChopForgeTests_artefacts/Release/ChopForgeTests"
-"$BUILD/ChopForgeHostTests"
+"$BUILD/KerfTests_artefacts/Release/KerfTests"
+"$BUILD/KerfHostTests"
 
-ART="$BUILD/ChopForge_artefacts/Release"
+ART="$BUILD/Kerf_artefacts/Release"
 echo
 echo "Built:"
-echo "  $ART/VST3/ChopForge.vst3"
-echo "  $ART/AU/ChopForge.component"
-echo "  $ART/Standalone/ChopForge.app"
+echo "  $ART/VST3/Kerf.vst3"
+echo "  $ART/AU/Kerf.component"
+echo "  $ART/Standalone/Kerf.app"
 
 if [ $INSTALL = 1 ]; then
     echo
@@ -63,7 +63,7 @@ if [ $INSTALL = 1 ]; then
     killall -9 AudioComponentRegistrar 2>/dev/null || true
     if command -v auval >/dev/null; then
         echo "==> auval (AudioUnit validation)"
-        auval -v aumf Chpf Bjrt | tail -n 5 || echo "auval reported a problem; the VST3 is unaffected."
+        auval -v aumf Kerf Bjrt | tail -n 5 || echo "auval reported a problem; the VST3 is unaffected."
     fi
     echo
     echo "Now open Maschine 3 > Preferences > Plug-ins > Locations > Rescan."

@@ -6,7 +6,7 @@
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <map>
 
-namespace cf::ui
+namespace kerf::ui
 {
 /* The "screen" (waveform + step grid) keeps a dark display look; everything around it is a
    matte black brushed-metal cabinet with steel screws and black anodised knobs. Every texture
@@ -253,13 +253,13 @@ private:
     std::map<int, juce::Image> knobImgs, screwImgs;
 };
 
-class ChopLookAndFeel : public juce::LookAndFeel_V4
+class KerfLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
     static constexpr float kButtonRadius = 1.5f;   // near-square controls
     static constexpr float kPanelRadius  = 3.0f;
 
-    ChopLookAndFeel()
+    KerfLookAndFeel()
     {
         setColour (juce::ResizableWindow::backgroundColourId, colours::metal);
         setColour (juce::Label::textColourId, colours::engraved);
@@ -714,4 +714,4 @@ public:
 private:
     Textures tx;
 };
-} // namespace cf::ui
+} // namespace kerf::ui

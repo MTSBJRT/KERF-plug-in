@@ -1,9 +1,9 @@
 #include "StepGrid.h"
 #include "LookAndFeel.h"
 
-namespace cf::ui
+namespace kerf::ui
 {
-StepGrid::StepGrid (ChopForgeProcessor& p) : processor (p)
+StepGrid::StepGrid (KerfProcessor& p) : processor (p)
 {
     setTooltip ("Drag a cell up/down to edit (shift = fine). Double-click resets. Click REV / LOCK cells to toggle.");
 }
@@ -93,7 +93,7 @@ void StepGrid::paint (juce::Graphics& g)
     g.drawRoundedRectangle (getLocalBounds().toFloat().reduced (0.5f), 6.0f, 1.0f);
 }
 
-void StepGrid::paintCell (juce::Graphics& g, int lane, int, const cf::StepData& s, juce::Rectangle<float> r, bool)
+void StepGrid::paintCell (juce::Graphics& g, int lane, int, const kerf::StepData& s, juce::Rectangle<float> r, bool)
 {
     auto inner = r.reduced (1.5f, 2.0f);
     const bool wide = inner.getWidth() > 22.0f;
@@ -316,4 +316,4 @@ void StepGrid::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheel
     const float delta = (wheel.deltaY > 0 ? 1.0f : -1.0f) * (lane == slice ? 8.0f : (lane == pitch ? 5.0f : (lane == repeats ? 12.0f : 6.0f)));
     applyDrag (lane, step, delta, false);
 }
-} // namespace cf::ui
+} // namespace kerf::ui

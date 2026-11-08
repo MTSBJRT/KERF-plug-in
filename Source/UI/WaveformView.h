@@ -6,7 +6,7 @@
 #include <juce_gui_extra/juce_gui_extra.h>
 #include "../PluginProcessor.h"
 
-namespace cf::ui
+namespace kerf::ui
 {
 /** Shows the loaded audio with its slice markers. Markers can be dragged,
     added (double-click) and removed (right-click). */
@@ -14,11 +14,11 @@ class WaveformView : public juce::Component,
                      public juce::SettableTooltipClient
 {
 public:
-    explicit WaveformView (ChopForgeProcessor& p);
+    explicit WaveformView (KerfProcessor& p);
 
     void refreshFromProcessor();          // call when the processor's sample changed
     void setPlayingSlice (int slice);
-    void setCaptureInfo (ChopForgeProcessor::CaptureState state, float progress);
+    void setCaptureInfo (KerfProcessor::CaptureState state, float progress);
 
     void paint (juce::Graphics& g) override;
     void resized() override;
@@ -36,13 +36,13 @@ private:
     float frameToX (int frame) const;
     void showContextMenu (const juce::MouseEvent& e);
 
-    ChopForgeProcessor& processor;
-    std::shared_ptr<const cf::SampleData> sample;
+    KerfProcessor& processor;
+    std::shared_ptr<const kerf::SampleData> sample;
     std::vector<std::pair<float, float>> peaks; // min/max per pixel column
     int playingSlice = -1, hoverMarker = -1, dragMarker = -1;
-    ChopForgeProcessor::CaptureState captureState = ChopForgeProcessor::CaptureState::idle;
+    KerfProcessor::CaptureState captureState = KerfProcessor::CaptureState::idle;
     float captureProgress = 0.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WaveformView)
 };
-} // namespace cf::ui
+} // namespace kerf::ui

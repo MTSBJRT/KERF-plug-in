@@ -10,13 +10,13 @@
 #include "Engine/Pattern.h"
 #include "Engine/SliceEngine.h"
 
-class ChopForgeProcessor : public juce::AudioProcessor,
+class KerfProcessor : public juce::AudioProcessor,
                            private juce::AudioProcessorValueTreeState::Listener,
                            private juce::AsyncUpdater
 {
 public:
-    ChopForgeProcessor();
-    ~ChopForgeProcessor() override;
+    KerfProcessor();
+    ~KerfProcessor() override;
 
     // ---------------------------------------------------------------- AudioProcessor
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -41,7 +41,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     // ---------------------------------------------------------------- sample (message thread)
-    std::shared_ptr<const cf::SampleData> getSample() const      { return sample.peek(); }
+    std::shared_ptr<const kerf::SampleData> getSample() const      { return sample.peek(); }
     bool loadFile (const juce::File& file);
     void clearSample();
     void setMarkers (std::vector<int> markers, bool switchToManual = true);
@@ -50,10 +50,10 @@ public:
 
     // ---------------------------------------------------------------- patterns (message thread)
     int  getCurrentSlot() const;
-    const cf::Pattern& getCurrentPattern() const                { return patterns.patterns[(size_t) getCurrentSlot()]; }
-    const cf::PatternSet& getPatternSet() const                 { return patterns; }
+    const kerf::Pattern& getCurrentPattern() const                { return patterns.patterns[(size_t) getCurrentSlot()]; }
+    const kerf::PatternSet& getPatternSet() const                 { return patterns; }
     void snapshotForUndo();                                      // call before a user edit
-    void setStep (int index, const cf::StepData& step);
+    void setStep (int index, const kerf::StepData& step);
     void setPatternLength (int length);
     void randomize();
     void resetPattern();
@@ -89,7 +89,7 @@ private:
     struct Event
     {
         int offset = 0;
-        cf::TriggerInfo info;
+        kerf::TriggerInfo info;
         int stepIndex = -1;
     };
 
@@ -97,23 +97,23 @@ private:
     void handleAsyncUpdate() override;
 
     void publishPatterns();
-    void publishSample (std::shared_ptr<const cf::SampleData> s);
+    void publishSample (std::shared_ptr<const kerf::SampleData> s);
     std::vector<int> computeMarkers (const juce::AudioBuffer<float>& audio, double rate, const std::vector<int>& existing) const;
     void finishCapture();
 
-    void runClock (int numSamples, double ppqStart, double bpm, const cf::Pattern& pattern);
-    void scheduleStep (const cf::StepData& step, int stepIndex, int offset, double stepSamples);
+    void runClock (int numSamples, double ppqStart, double bpm, const kerf::Pattern& pattern);
+    void scheduleStep (const kerf::StepData& step, int stepIndex, int offset, double stepSamples);
     void handleMidi (juce::MidiBuffer& midi);
     void addEvent (const Event& e);
-    void renderEvents (juce::AudioBuffer<float>& wet, int numSamples, const std::shared_ptr<const cf::SampleData>& smp);
+    void renderEvents (juce::AudioBuffer<float>& wet, int numSamples, const std::shared_ptr<const kerf::SampleData>& smp);
 
     template <typename T> T* param (const char* paramId) const { return dynamic_cast<T*> (apvts.getParameter (paramId)); }
     float raw (const char* paramId) const                       { return apvts.getRawParameterValue (paramId)->load(); }
 
     // engine
-    cf::SliceEngine engine;
-    cf::Published<cf::SampleData>  sample;
-    cf::Published<cf::PatternSet>  publishedPatterns;
+    kerf::SliceEngine engine;
+    kerf::Published<kerf::SampleData>  sample;
+    kerf::Published<kerf::PatternSet>  publishedPatterns;
     juce::AudioBuffer<float> wetBuffer;
     juce::Random rng;
 
@@ -132,14 +132,14 @@ private:
     double captureRate = 44100.0;
 
     // message-thread master data
-    cf::PatternSet patterns;
+    kerf::PatternSet patterns;
     bool patternsTouched = false;
-    struct UndoEntry { int slot; cf::Pattern pattern; };
+    struct UndoEntry { int slot; kerf::Pattern pattern; };
     std::vector<UndoEntry> undoStack, redoStack;
-    std::optional<cf::Pattern> clipboard;
+    std::optional<kerf::Pattern> clipboard;
     std::atomic<bool> needsReslice { false };
     std::atomic<bool> captureNeedsFinish { false };
     juce::AudioFormatManager formatManager;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ChopForgeProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KerfProcessor)
 };

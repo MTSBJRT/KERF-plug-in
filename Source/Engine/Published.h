@@ -3,7 +3,7 @@
 #include <array>
 #include <memory>
 
-namespace cf
+namespace kerf
 {
 /** Hands an immutable object from the message thread to the audio thread.
     The audio thread never blocks: if the lock is busy it keeps using the
@@ -42,4 +42,4 @@ private:
     std::array<std::shared_ptr<const T>, 4> keepAlive;
     size_t keepIndex = 0;
 };
-} // namespace cf
+} // namespace kerf

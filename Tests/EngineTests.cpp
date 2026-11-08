@@ -1,4 +1,4 @@
-// Headless tests for the ChopForge engine (no GUI, no host).
+// Headless tests for the Kerf engine (no GUI, no host).
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_dsp/juce_dsp.h>
@@ -11,7 +11,7 @@
 static int failures = 0;
 #define CHECK(cond) do { if (! (cond)) { ++failures; std::cerr << "FAIL " << __FILE__ << ":" << __LINE__ << "  " #cond << std::endl; } } while (false)
 
-using namespace cf;
+using namespace kerf;
 
 static std::shared_ptr<SampleData> makeSineSample (double sr, double seconds, int slices, double freq = 440.0)
 {

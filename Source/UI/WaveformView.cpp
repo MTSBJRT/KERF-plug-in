@@ -2,9 +2,9 @@
 #include "LookAndFeel.h"
 #include "../Engine/TransientDetector.h"
 
-namespace cf::ui
+namespace kerf::ui
 {
-WaveformView::WaveformView (ChopForgeProcessor& p) : processor (p)
+WaveformView::WaveformView (KerfProcessor& p) : processor (p)
 {
     setTooltip ("Double-click: add a slice marker. Drag a marker to move it. Right-click a marker to remove it.");
     refreshFromProcessor();
@@ -22,7 +22,7 @@ void WaveformView::setPlayingSlice (int slice)
     if (playingSlice != slice) { playingSlice = slice; repaint(); }
 }
 
-void WaveformView::setCaptureInfo (ChopForgeProcessor::CaptureState state, float progress)
+void WaveformView::setCaptureInfo (KerfProcessor::CaptureState state, float progress)
 {
     if (state != captureState || std::abs (progress - captureProgress) > 0.005f)
     {
@@ -93,13 +93,13 @@ void WaveformView::paint (juce::Graphics& g)
     {
         g.setColour (colours::textDim);
         g.setFont (juce::FontOptions (14.0f));
-        juce::String msg = captureState == ChopForgeProcessor::CaptureState::armed
+        juce::String msg = captureState == KerfProcessor::CaptureState::armed
                              ? "Capture armed - waiting for the next bar..."
                              : "Drop an audio file here, click LOAD, or CAPTURE the live input";
-        if (captureState == ChopForgeProcessor::CaptureState::recording)
+        if (captureState == KerfProcessor::CaptureState::recording)
             msg = "Recording... " + juce::String (juce::roundToInt (captureProgress * 100.0f)) + " %";
         g.drawText (msg, getLocalBounds(), juce::Justification::centred);
-        if (captureState == ChopForgeProcessor::CaptureState::recording)
+        if (captureState == KerfProcessor::CaptureState::recording)
         {
             g.setColour (colours::warn.withAlpha (0.35f));
             g.fillRoundedRectangle (bounds.withWidth (bounds.getWidth() * captureProgress), 6.0f);
@@ -148,7 +148,7 @@ void WaveformView::paint (juce::Graphics& g)
     }
 
     // capture overlay
-    if (captureState == ChopForgeProcessor::CaptureState::recording)
+    if (captureState == KerfProcessor::CaptureState::recording)
     {
         g.setColour (colours::warn.withAlpha (0.35f));
         g.fillRoundedRectangle (bounds.withWidth (bounds.getWidth() * captureProgress), 6.0f);
@@ -156,7 +156,7 @@ void WaveformView::paint (juce::Graphics& g)
         g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
         g.drawText ("RECORDING", getLocalBounds(), juce::Justification::centred);
     }
-    else if (captureState == ChopForgeProcessor::CaptureState::armed)
+    else if (captureState == KerfProcessor::CaptureState::armed)
     {
         g.setColour (colours::warn.withAlpha (0.8f));
         g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
@@ -206,7 +206,7 @@ void WaveformView::mouseUp (const juce::MouseEvent&)
 void WaveformView::mouseDoubleClick (const juce::MouseEvent& e)
 {
     if (sample == nullptr || markerAt (e.x) >= 0) return;
-    if (sample->numSlices() >= cf::kMaxSlices) return;
+    if (sample->numSlices() >= kerf::kMaxSlices) return;
     auto markers = sample->markers;
     markers.push_back (xToFrame ((float) e.x));
     processor.setMarkers (markers);
@@ -218,7 +218,7 @@ void WaveformView::showContextMenu (const juce::MouseEvent& e)
     const int m = markerAt (e.x);
     const int frame = xToFrame ((float) e.x);
     juce::PopupMenu menu;
-    menu.addItem (1, "Add marker here", m < 0 && sample->numSlices() < cf::kMaxSlices);
+    menu.addItem (1, "Add marker here", m < 0 && sample->numSlices() < kerf::kMaxSlices);
     menu.addItem (2, "Remove this marker", m > 0);
     menu.addSeparator();
     menu.addItem (3, "Split this slice in two");
@@ -243,4 +243,4 @@ void WaveformView::showContextMenu (const juce::MouseEvent& e)
         refreshFromProcessor();
     });
 }
-} // namespace cf::ui
+} // namespace kerf::ui

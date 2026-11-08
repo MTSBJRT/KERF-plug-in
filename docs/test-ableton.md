@@ -1,4 +1,4 @@
-# Protocole de test ChopForge dans Ableton Live (macOS)
+# Protocole de test Kerf dans Ableton Live (macOS)
 
 Objectif : vérifier en 15 minutes ce qui n'a pas pu être testé en dehors d'un DAW :
 chargement, synchronisation au transport, capture calée sur la mesure, MIDI, et
@@ -7,7 +7,7 @@ sauvegarde dans le projet. Notez le résultat de chaque étape (OK / KO + ce qui
 ## 0. Installation
 
 ```bash
-cd ChopForge
+cd Kerf
 ./scripts/build-macos.sh
 ```
 
@@ -17,12 +17,12 @@ ligne auval se terminant par `AU VALIDATION SUCCEEDED`.
 Dans Live : Préférences > Plug-Ins. Activez *Use VST3 Plug-In System Folders* (le dossier
 utilisateur `~/Library/Audio/Plug-Ins/VST3` est inclus) et, si vous voulez tester l'AU,
 *Use Audio Units*. Cliquez *Rescan* en maintenant Alt (Option) enfoncé pour forcer un
-scan complet. ChopForge doit apparaître dans le navigateur, catégorie Plug-Ins > VST3 >
+scan complet. Kerf doit apparaître dans le navigateur, catégorie Plug-Ins > VST3 >
 Bajart Audio (et Audio Units > Bajart Audio).
 
 ## 1. Chargement et interface
 
-1. Créez une piste audio, glissez ChopForge dessus. Ouvrez la fenêtre du plugin.
+1. Créez une piste audio, glissez Kerf dessus. Ouvrez la fenêtre du plugin.
 2. Attendu : interface complète, en-tête « 120.0 BPM STOP | 0 voices » (le tempo doit
    refléter celui de Live, pas 120 si votre set est à un autre tempo).
 3. Redimensionnez la fenêtre : tout doit suivre sans chevauchement.
@@ -55,7 +55,7 @@ Bajart Audio (et Audio Units > Bajart Audio).
 
 ## 4. Capture live
 
-1. Placez ChopForge sur une piste de batterie qui joue (ou sur le Master).
+1. Placez Kerf sur une piste de batterie qui joue (ou sur le Master).
 2. *Capture* = 2 bars. Lancez la lecture, puis cliquez CAPTURE.
 3. Attendu : le bouton affiche ARMED, puis REC xx % à partir du **début de la mesure
    suivante**, puis la forme d'onde capturée s'affiche et les slices rejouent le contenu.
@@ -64,8 +64,8 @@ Bajart Audio (et Audio Units > Bajart Audio).
 
 ## 5. MIDI
 
-1. Créez une piste MIDI. Dans *MIDI To*, choisissez la piste audio qui porte ChopForge,
-   puis dans le second menu choisissez *ChopForge* (et non *Track In*).
+1. Créez une piste MIDI. Dans *MIDI To*, choisissez la piste audio qui porte Kerf,
+   puis dans le second menu choisissez *Kerf* (et non *Track In*).
 2. Armez la piste MIDI. Jouez C1, C#1, D1… au clavier (ou au pavé de notes de Live).
 3. Attendu avec *MIDI* = One-shot : chaque note joue le slice correspondant en entier.
    Avec *Hold* : le slice s'arrête quand on relâche la touche. Avec *Chromatic* : les
@@ -101,12 +101,12 @@ taille de buffer audio (Préférences > Audio).
 
 - La sortie complète de `./scripts/build-macos.sh`.
 - Pour un plantage : le rapport dans Console.app > Rapports de plantage (fichier
-  `Live_*.ips` ou `ChopForge_*.ips`), ou le contenu de `~/Library/Logs/DiagnosticReports`.
+  `Live_*.ips` ou `Kerf_*.ips`), ou le contenu de `~/Library/Logs/DiagnosticReports`.
 - Pour un problème de scan : Live > Préférences > Plug-Ins, le message affiché, et le
   résultat de la commande
 
 ```bash
-auval -v aumf Chpf Bjrt
+auval -v aumf Kerf Bjrt
 ```
 
 - Pour un problème de synchronisation : le tempo, la signature rythmique, la position de

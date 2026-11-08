@@ -6,14 +6,14 @@
 #include <juce_gui_extra/juce_gui_extra.h>
 #include "../PluginProcessor.h"
 
-namespace cf::ui
+namespace kerf::ui
 {
 /** Multi-lane step editor for the current pattern. */
 class StepGrid : public juce::Component,
                  public juce::SettableTooltipClient
 {
 public:
-    explicit StepGrid (ChopForgeProcessor& p);
+    explicit StepGrid (KerfProcessor& p);
 
     void setCurrentStep (int step);
     void setNumSlices (int n);
@@ -33,17 +33,17 @@ private:
     int  stepAt (float x) const;
     float laneHeight() const;
     float cellWidth() const;
-    void  paintCell (juce::Graphics& g, int lane, int step, const cf::StepData& s, juce::Rectangle<float> r, bool current);
+    void  paintCell (juce::Graphics& g, int lane, int step, const kerf::StepData& s, juce::Rectangle<float> r, bool current);
     void  applyDrag (int lane, int step, float deltaPixels, bool fine);
     void  toggleAt (int lane, int step, float xInCell, bool firstClick);
 
-    ChopForgeProcessor& processor;
+    KerfProcessor& processor;
     int currentStep = -1, numSlices = 16;
 
     // drag state
     int dragLane = -1, dragStep = -1;
     float dragStartY = 0.0f;
-    cf::StepData dragStartData;
+    kerf::StepData dragStartData;
     bool paintValue = false;
 
     static constexpr float headerW = 58.0f;
@@ -51,4 +51,4 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (StepGrid)
 };
-} // namespace cf::ui
+} // namespace kerf::ui

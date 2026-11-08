@@ -3,7 +3,7 @@
 #include "Engine/TransientDetector.h"
 #include "Engine/Randomizer.h"
 
-using namespace cf;
+using namespace kerf;
 
 namespace
 {
@@ -11,7 +11,7 @@ constexpr int kMaxUndo = 48;
 constexpr int kMidiBaseNote = 36; // C1 = slice 0
 } // namespace
 
-ChopForgeProcessor::ChopForgeProcessor()
+KerfProcessor::KerfProcessor()
     : AudioProcessor (BusesProperties().withInput ("Input", juce::AudioChannelSet::stereo(), true)
                                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
@@ -24,7 +24,7 @@ ChopForgeProcessor::ChopForgeProcessor()
         apvts.addParameterListener (idStr, this);
 }
 
-ChopForgeProcessor::~ChopForgeProcessor()
+KerfProcessor::~KerfProcessor()
 {
     cancelPendingUpdate();
     for (auto* idStr : { id::sliceMode, id::sliceCount, id::sensitivity })
@@ -32,7 +32,7 @@ ChopForgeProcessor::~ChopForgeProcessor()
 }
 
 // =============================================================================== lifecycle
-void ChopForgeProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void KerfProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     engine.prepare (sampleRate, samplesPerBlock);
     wetBuffer.setSize (2, juce::jmax (16, samplesPerBlock));
@@ -45,9 +45,9 @@ void ChopForgeProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     if (getCaptureState() == CaptureState::recording) captureState.store ((int) CaptureState::idle);
 }
 
-void ChopForgeProcessor::releaseResources() {}
+void KerfProcessor::releaseResources() {}
 
-bool ChopForgeProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool KerfProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     const auto out = layouts.getMainOutputChannelSet();
     const auto in  = layouts.getMainInputChannelSet();
@@ -57,7 +57,7 @@ bool ChopForgeProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
 }
 
 // =============================================================================== processing
-void ChopForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+void KerfProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals noDenormals;
     const int numSamples = buffer.getNumSamples();
@@ -189,7 +189,7 @@ void ChopForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     midi.clear();
 }
 
-void ChopForgeProcessor::handleMidi (juce::MidiBuffer& midi)
+void KerfProcessor::handleMidi (juce::MidiBuffer& midi)
 {
     const int mode = juce::roundToInt (raw (id::midiMode)); // 0 off, 1 one-shot, 2 hold, 3 chromatic
     if (mode == 0) return;
@@ -232,7 +232,7 @@ void ChopForgeProcessor::handleMidi (juce::MidiBuffer& midi)
     }
 }
 
-void ChopForgeProcessor::runClock (int numSamples, double ppqStart, double bpm, const Pattern& pattern)
+void KerfProcessor::runClock (int numSamples, double ppqStart, double bpm, const Pattern& pattern)
 {
     const double sr = getSampleRate();
     const double stepLen = divisionToBeats (juce::roundToInt (raw (id::division)));
@@ -254,7 +254,7 @@ void ChopForgeProcessor::runClock (int numSamples, double ppqStart, double bpm, 
     }
 }
 
-void ChopForgeProcessor::scheduleStep (const StepData& step, int stepIndex, int offset, double stepSamples)
+void KerfProcessor::scheduleStep (const StepData& step, int stepIndex, int offset, double stepSamples)
 {
     Event e;
     e.stepIndex = stepIndex;
@@ -277,12 +277,12 @@ void ChopForgeProcessor::scheduleStep (const StepData& step, int stepIndex, int 
     }
 }
 
-void ChopForgeProcessor::addEvent (const Event& e)
+void KerfProcessor::addEvent (const Event& e)
 {
     if (numEvents < (int) events.size()) events[(size_t) numEvents++] = e;
 }
 
-void ChopForgeProcessor::renderEvents (juce::AudioBuffer<float>& wet, int numSamples, const std::shared_ptr<const SampleData>& smp)
+void KerfProcessor::renderEvents (juce::AudioBuffer<float>& wet, int numSamples, const std::shared_ptr<const SampleData>& smp)
 {
     // insertion sort by offset (small array)
     for (int i = 1; i < numEvents; ++i)
@@ -318,18 +318,18 @@ void ChopForgeProcessor::renderEvents (juce::AudioBuffer<float>& wet, int numSam
 }
 
 // =============================================================================== capture
-void ChopForgeProcessor::requestCapture()
+void KerfProcessor::requestCapture()
 {
     if (getCaptureState() == CaptureState::idle) captureState.store ((int) CaptureState::armed);
 }
 
-void ChopForgeProcessor::cancelCapture()
+void KerfProcessor::cancelCapture()
 {
     captureState.store ((int) CaptureState::idle);
     captureProgress.store (0.0f);
 }
 
-void ChopForgeProcessor::finishCapture()
+void KerfProcessor::finishCapture()
 {
     if (getCaptureState() != CaptureState::done) return;
     const int n = juce::jmin (captureWritePos, captureBuffer.getNumSamples());
@@ -346,7 +346,7 @@ void ChopForgeProcessor::finishCapture()
 }
 
 // =============================================================================== sample management
-std::vector<int> ChopForgeProcessor::computeMarkers (const juce::AudioBuffer<float>& audio, double rate, const std::vector<int>& existing) const
+std::vector<int> KerfProcessor::computeMarkers (const juce::AudioBuffer<float>& audio, double rate, const std::vector<int>& existing) const
 {
     const int mode  = juce::roundToInt (raw (id::sliceMode));
     const int count = juce::roundToInt (raw (id::sliceCount));
@@ -355,7 +355,7 @@ std::vector<int> ChopForgeProcessor::computeMarkers (const juce::AudioBuffer<flo
     return existing.empty() ? gridMarkers (audio.getNumSamples(), count) : existing;
 }
 
-void ChopForgeProcessor::publishSample (std::shared_ptr<const SampleData> s)
+void KerfProcessor::publishSample (std::shared_ptr<const SampleData> s)
 {
     sample.set (std::move (s));
     if (auto current = sample.peek(); current != nullptr && ! patternsTouched)
@@ -366,7 +366,7 @@ void ChopForgeProcessor::publishSample (std::shared_ptr<const SampleData> s)
     sampleVersion.fetch_add (1);
 }
 
-bool ChopForgeProcessor::loadFile (const juce::File& file)
+bool KerfProcessor::loadFile (const juce::File& file)
 {
     std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
     if (reader == nullptr || reader->lengthInSamples <= 0) return false;
@@ -377,13 +377,13 @@ bool ChopForgeProcessor::loadFile (const juce::File& file)
     return true;
 }
 
-void ChopForgeProcessor::clearSample()
+void KerfProcessor::clearSample()
 {
     sample.set (nullptr);
     sampleVersion.fetch_add (1);
 }
 
-void ChopForgeProcessor::setMarkers (std::vector<int> markers, bool switchToManual)
+void KerfProcessor::setMarkers (std::vector<int> markers, bool switchToManual)
 {
     auto current = sample.peek();
     if (current == nullptr) return;
@@ -396,7 +396,7 @@ void ChopForgeProcessor::setMarkers (std::vector<int> markers, bool switchToManu
     sampleVersion.fetch_add (1);
 }
 
-void ChopForgeProcessor::reslice()
+void KerfProcessor::reslice()
 {
     auto current = sample.peek();
     if (current == nullptr || juce::roundToInt (raw (id::sliceMode)) == 2) return;
@@ -408,31 +408,31 @@ void ChopForgeProcessor::reslice()
     }
 }
 
-void ChopForgeProcessor::parameterChanged (const juce::String&, float)
+void KerfProcessor::parameterChanged (const juce::String&, float)
 {
     needsReslice.store (true);
     triggerAsyncUpdate();
 }
 
-void ChopForgeProcessor::handleAsyncUpdate()
+void KerfProcessor::handleAsyncUpdate()
 {
     if (captureNeedsFinish.exchange (false)) finishCapture();
     if (needsReslice.exchange (false)) reslice();
 }
 
 // =============================================================================== patterns
-int ChopForgeProcessor::getCurrentSlot() const
+int KerfProcessor::getCurrentSlot() const
 {
     return juce::jlimit (0, kNumPatterns - 1, juce::roundToInt (raw (id::patternSlot)));
 }
 
-void ChopForgeProcessor::publishPatterns()
+void KerfProcessor::publishPatterns()
 {
     publishedPatterns.set (std::make_shared<const PatternSet> (patterns));
     patternVersion.fetch_add (1);
 }
 
-void ChopForgeProcessor::snapshotForUndo()
+void KerfProcessor::snapshotForUndo()
 {
     undoStack.push_back ({ getCurrentSlot(), getCurrentPattern() });
     if ((int) undoStack.size() > kMaxUndo) undoStack.erase (undoStack.begin());
@@ -440,7 +440,7 @@ void ChopForgeProcessor::snapshotForUndo()
     patternsTouched = true;
 }
 
-void ChopForgeProcessor::setStep (int index, const StepData& step)
+void KerfProcessor::setStep (int index, const StepData& step)
 {
     if (index < 0 || index >= kMaxSteps) return;
     auto s = step;
@@ -452,7 +452,7 @@ void ChopForgeProcessor::setStep (int index, const StepData& step)
     publishPatterns();
 }
 
-void ChopForgeProcessor::setPatternLength (int length)
+void KerfProcessor::setPatternLength (int length)
 {
     auto& p = patterns.patterns[(size_t) getCurrentSlot()];
     length = juce::jlimit (1, kMaxSteps, length);
@@ -462,7 +462,7 @@ void ChopForgeProcessor::setPatternLength (int length)
     publishPatterns();
 }
 
-void ChopForgeProcessor::randomize()
+void KerfProcessor::randomize()
 {
     auto smp = sample.peek();
     snapshotForUndo();
@@ -480,7 +480,7 @@ void ChopForgeProcessor::randomize()
     publishPatterns();
 }
 
-void ChopForgeProcessor::resetPattern()
+void KerfProcessor::resetPattern()
 {
     auto smp = sample.peek();
     snapshotForUndo();
@@ -491,7 +491,7 @@ void ChopForgeProcessor::resetPattern()
     publishPatterns();
 }
 
-void ChopForgeProcessor::setAllLocks (bool slice, bool pitch, bool fx, bool value)
+void KerfProcessor::setAllLocks (bool slice, bool pitch, bool fx, bool value)
 {
     snapshotForUndo();
     for (auto& st : patterns.patterns[(size_t) getCurrentSlot()].steps)
@@ -503,7 +503,7 @@ void ChopForgeProcessor::setAllLocks (bool slice, bool pitch, bool fx, bool valu
     publishPatterns();
 }
 
-void ChopForgeProcessor::undo()
+void KerfProcessor::undo()
 {
     if (undoStack.empty()) return;
     auto entry = undoStack.back();
@@ -513,7 +513,7 @@ void ChopForgeProcessor::undo()
     publishPatterns();
 }
 
-void ChopForgeProcessor::redo()
+void KerfProcessor::redo()
 {
     if (redoStack.empty()) return;
     auto entry = redoStack.back();
@@ -523,9 +523,9 @@ void ChopForgeProcessor::redo()
     publishPatterns();
 }
 
-void ChopForgeProcessor::copyPattern()  { clipboard = getCurrentPattern(); }
+void KerfProcessor::copyPattern()  { clipboard = getCurrentPattern(); }
 
-bool ChopForgeProcessor::pastePattern()
+bool KerfProcessor::pastePattern()
 {
     if (! clipboard) return false;
     snapshotForUndo();
@@ -534,7 +534,7 @@ bool ChopForgeProcessor::pastePattern()
     return true;
 }
 
-bool ChopForgeProcessor::exportMidi (const juce::File& file) const
+bool KerfProcessor::exportMidi (const juce::File& file) const
 {
     const auto& p = getCurrentPattern();
     const int ticksPerQuarter = 960;
@@ -571,7 +571,7 @@ bool ChopForgeProcessor::exportMidi (const juce::File& file) const
 }
 
 // =============================================================================== state
-void ChopForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
+void KerfProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
     juce::ValueTree data ("CF_DATA");
@@ -619,7 +619,7 @@ void ChopForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
     if (auto xml = state.createXml()) copyXmlToBinary (*xml, destData);
 }
 
-void ChopForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
+void KerfProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     std::unique_ptr<juce::XmlElement> xml (getXmlFromBinary (data, sizeInBytes));
     if (xml == nullptr) return;
@@ -666,6 +666,6 @@ void ChopForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
     }
 }
 
-juce::AudioProcessorEditor* ChopForgeProcessor::createEditor() { return new ChopForgeEditor (*this); }
+juce::AudioProcessorEditor* KerfProcessor::createEditor() { return new KerfEditor (*this); }
 
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new ChopForgeProcessor(); }
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new KerfProcessor(); }

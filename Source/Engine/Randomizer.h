@@ -2,7 +2,7 @@
 #include "Pattern.h"
 #include <vector>
 
-namespace cf
+namespace kerf
 {
 struct Scale
 {
@@ -98,4 +98,4 @@ inline void randomizePattern (Pattern& p, const RandomizeSettings& s, int numSli
         st.clamp();
     }
 }
-} // namespace cf
+} // namespace kerf

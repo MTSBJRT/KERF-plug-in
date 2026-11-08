@@ -6,3 +6,5 @@ third_party/JUCE/
 .DS_Store
 dist/
 build.log
+build.log
+build-configure.log

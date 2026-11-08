@@ -1,21 +1,23 @@
 #include "PluginEditor.h"
+#include "UI/Logo.h"
 
-using namespace cf;
-using namespace cf::ui;
+using namespace kerf;
+using namespace kerf::ui;
 
-ChopForgeEditor::ChopForgeEditor (ChopForgeProcessor& p)
+KerfEditor::KerfEditor (KerfProcessor& p)
     : AudioProcessorEditor (&p), processor (p), waveform (p), grid (p)
 {
     setLookAndFeel (&lookAndFeel);
     setWantsKeyboardFocus (true);
 
     // ------------------------------------------------------------ header
-    titleLabel.setText ("ChopForge", juce::dontSendNotification);
+    titleLabel.setText ("Kerf", juce::dontSendNotification);
+    titleLabel.setVisible (false); // the printed stamp replaces the nameplate
     titleLabel.setFont (juce::FontOptions (25.0f, juce::Font::bold));
     titleLabel.setComponentID ("nameplate");
     titleLabel.setColour (juce::Label::textColourId, colours::engraved);
     titleLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (titleLabel);
+    addChildComponent (titleLabel); // kept for layout only, the stamp is painted in its place
 
     sampleLabel.setFont (juce::FontOptions (12.0f, juce::Font::bold));
     sampleLabel.setColour (juce::Label::textColourId, colours::engraved);
@@ -28,7 +30,7 @@ ChopForgeEditor::ChopForgeEditor (ChopForgeProcessor& p)
 
     makeButton (captureButton, "CAPTURE", "Record the live input for the chosen number of bars (starts on the next bar when the host is playing)", [this]
     {
-        if (processor.getCaptureState() == ChopForgeProcessor::CaptureState::idle) processor.requestCapture();
+        if (processor.getCaptureState() == KerfProcessor::CaptureState::idle) processor.requestCapture();
         else processor.cancelCapture();
     });
     makeButton (loadButton, "LOAD", "Load an audio file (or drop one onto the window)", [this] { openLoadDialog(); });
@@ -124,7 +126,7 @@ ChopForgeEditor::ChopForgeEditor (ChopForgeProcessor& p)
     makeCombo (midiMode, id::midiMode, "MIDI", "One-shot/hold: C1 and up play slices. Chromatic: notes pitch the chosen slice around C3");
     makeKnob (chromSlice, id::chromSlice, "Chrom", "Slice played in chromatic MIDI mode");
 
-    if (auto autoload = juce::SystemStats::getEnvironmentVariable ("CHOPFORGE_AUTOLOAD", {}); autoload.isNotEmpty() && processor.getSample() == nullptr)
+    if (auto autoload = juce::SystemStats::getEnvironmentVariable ("KERF_AUTOLOAD", {}); autoload.isNotEmpty() && processor.getSample() == nullptr)
         processor.loadFile (juce::File (autoload));
 
     setResizable (true, true);
@@ -133,14 +135,14 @@ ChopForgeEditor::ChopForgeEditor (ChopForgeProcessor& p)
     startTimerHz (30);
 }
 
-ChopForgeEditor::~ChopForgeEditor()
+KerfEditor::~KerfEditor()
 {
     stopTimer();
     setLookAndFeel (nullptr);
 }
 
 // =============================================================================== helpers
-void ChopForgeEditor::makeKnob (Knob& k, const char* paramId, const juce::String& text, const juce::String& tooltip)
+void KerfEditor::makeKnob (Knob& k, const char* paramId, const juce::String& text, const juce::String& tooltip)
 {
     k.slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 54, 15);
@@ -154,7 +156,7 @@ void ChopForgeEditor::makeKnob (Knob& k, const char* paramId, const juce::String
     addAndMakeVisible (k.label);
 }
 
-void ChopForgeEditor::makeCombo (Combo& c, const char* paramId, const juce::String& text, const juce::String& tooltip)
+void KerfEditor::makeCombo (Combo& c, const char* paramId, const juce::String& text, const juce::String& tooltip)
 {
     c.box.setTooltip (tooltip);
     if (auto* choice = dynamic_cast<juce::AudioParameterChoice*> (processor.apvts.getParameter (paramId)))
@@ -167,7 +169,7 @@ void ChopForgeEditor::makeCombo (Combo& c, const char* paramId, const juce::Stri
     addAndMakeVisible (c.label);
 }
 
-void ChopForgeEditor::makeButton (juce::TextButton& b, const juce::String& text, const juce::String& tooltip, std::function<void()> onClick)
+void KerfEditor::makeButton (juce::TextButton& b, const juce::String& text, const juce::String& tooltip, std::function<void()> onClick)
 {
     b.setButtonText (text);
     b.setTooltip (tooltip);
@@ -175,26 +177,28 @@ void ChopForgeEditor::makeButton (juce::TextButton& b, const juce::String& text,
     addAndMakeVisible (b);
 }
 
-void ChopForgeEditor::layoutKnob (Knob& k, juce::Rectangle<int> area)
+void KerfEditor::layoutKnob (Knob& k, juce::Rectangle<int> area)
 {
     k.label.setBounds (area.removeFromTop (14));
     k.slider.setBounds (area);
 }
 
-void ChopForgeEditor::layoutCombo (Combo& c, juce::Rectangle<int> area)
+void KerfEditor::layoutCombo (Combo& c, juce::Rectangle<int> area)
 {
     c.label.setBounds (area.removeFromTop (14));
     c.box.setBounds (area.removeFromTop (22));
 }
 
 // =============================================================================== layout
-void ChopForgeEditor::paint (juce::Graphics& g)
+void KerfEditor::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds();
     lookAndFeel.drawFace (g, bounds);
-    cf::ui::ChopLookAndFeel::drawLighting (g, bounds.toFloat());
+    kerf::ui::KerfLookAndFeel::drawLighting (g, bounds.toFloat());
 
-    lookAndFeel.drawBrassPlate (g, namePlate.toFloat());
+    // screen-printed maker's stamp instead of a nameplate
+    kerf::ui::logo::drawStamp (g, namePlate.toFloat(), kLogoVariant, colours::engraved,
+                               &lookAndFeel.textures().brushed (colours::metalDark));
     lookAndFeel.drawScreenBezel (g, screenBounds.toFloat());
 
     for (auto& panel : footerPanels)
@@ -208,13 +212,13 @@ void ChopForgeEditor::paint (juce::Graphics& g)
     lookAndFeel.drawScrew (g, (float) bounds.getCentreX(), (float) bounds.getBottom() - 13.0f, 6.5f, 1);
 }
 
-void ChopForgeEditor::resized()
+void KerfEditor::resized()
 {
     auto area = getLocalBounds().reduced (14, 10);
 
     // ---- header
     auto header = area.removeFromTop (62);
-    titleLabel.setBounds (header.removeFromLeft (170).withTrimmedBottom (24).withTrimmedTop (1));
+    titleLabel.setBounds (header.removeFromLeft (150).withTrimmedBottom (22).withTrimmedTop (0));
     header.removeFromLeft (18);
     sampleLabel.setBounds (titleLabel.getBounds().withY (titleLabel.getBottom() + 2).withHeight (18).withWidth (300));
     bpmLabel.setBounds (header.removeFromRight (200).withTrimmedTop (4));
@@ -332,11 +336,11 @@ void ChopForgeEditor::resized()
     waveform.setBounds (area.removeFromTop (juce::jmax (110, area.getHeight() / 3)));
     area.removeFromTop (6);
     grid.setBounds (area);
-    namePlate = titleLabel.getBounds().expanded (4, 2);
+    namePlate = titleLabel.getBounds().withTrimmedTop (2).withTrimmedBottom (2);
 }
 
 // =============================================================================== behaviour
-void ChopForgeEditor::setSlot (int slot)
+void KerfEditor::setSlot (int slot)
 {
     if (auto* p = dynamic_cast<juce::AudioParameterChoice*> (processor.apvts.getParameter (id::patternSlot)))
     {
@@ -346,28 +350,28 @@ void ChopForgeEditor::setSlot (int slot)
     }
 }
 
-void ChopForgeEditor::updateCaptureButton()
+void KerfEditor::updateCaptureButton()
 {
     const auto state = processor.getCaptureState();
     switch (state)
     {
-        case ChopForgeProcessor::CaptureState::idle:
+        case KerfProcessor::CaptureState::idle:
             captureButton.setButtonText ("CAPTURE");
             captureButton.setColour (juce::TextButton::buttonColourId, colours::steelMid);
             break;
-        case ChopForgeProcessor::CaptureState::armed:
+        case KerfProcessor::CaptureState::armed:
             captureButton.setButtonText ("ARMED");
             captureButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff6b4a12));
             break;
-        case ChopForgeProcessor::CaptureState::recording:
-        case ChopForgeProcessor::CaptureState::done:
+        case KerfProcessor::CaptureState::recording:
+        case KerfProcessor::CaptureState::done:
             captureButton.setButtonText ("REC " + juce::String (juce::roundToInt (processor.getCaptureProgress() * 100.0f)) + "%");
             captureButton.setColour (juce::TextButton::buttonColourId, colours::warn);
             break;
     }
 }
 
-void ChopForgeEditor::timerCallback()
+void KerfEditor::timerCallback()
 {
     const int sv = processor.sampleVersion.load();
     if (sv != lastSampleVersion)
@@ -413,7 +417,7 @@ void ChopForgeEditor::timerCallback()
     chromSlice.slider.setEnabled (choice (id::midiMode) == 3);
 }
 
-bool ChopForgeEditor::keyPressed (const juce::KeyPress& key)
+bool KerfEditor::keyPressed (const juce::KeyPress& key)
 {
     const bool ctrl = key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown();
     if (ctrl && key.getKeyCode() == 'Z')
@@ -426,20 +430,20 @@ bool ChopForgeEditor::keyPressed (const juce::KeyPress& key)
     return false;
 }
 
-bool ChopForgeEditor::isInterestedInFileDrag (const juce::StringArray& files)
+bool KerfEditor::isInterestedInFileDrag (const juce::StringArray& files)
 {
     for (auto& f : files)
         if (juce::File (f).hasFileExtension ("wav;aif;aiff;flac;ogg;mp3")) return true;
     return false;
 }
 
-void ChopForgeEditor::filesDropped (const juce::StringArray& files, int, int)
+void KerfEditor::filesDropped (const juce::StringArray& files, int, int)
 {
     for (auto& f : files)
         if (juce::File (f).hasFileExtension ("wav;aif;aiff;flac;ogg;mp3") && processor.loadFile (juce::File (f))) break;
 }
 
-void ChopForgeEditor::openLoadDialog()
+void KerfEditor::openLoadDialog()
 {
     fileChooser = std::make_unique<juce::FileChooser> ("Load an audio file", juce::File::getSpecialLocation (juce::File::userMusicDirectory),
                                                        "*.wav;*.aif;*.aiff;*.flac;*.ogg;*.mp3");
@@ -448,14 +452,14 @@ void ChopForgeEditor::openLoadDialog()
     {
         auto f = fc.getResult();
         if (f.existsAsFile() && ! processor.loadFile (f))
-            juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "ChopForge", "Could not read this audio file.");
+            juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Kerf", "Could not read this audio file.");
     });
 }
 
-void ChopForgeEditor::openExportDialog()
+void KerfEditor::openExportDialog()
 {
     fileChooser = std::make_unique<juce::FileChooser> ("Export pattern as MIDI",
-                                                       juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("ChopForge pattern.mid"), "*.mid");
+                                                       juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("Kerf pattern.mid"), "*.mid");
     fileChooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::warnAboutOverwriting,
                               [this] (const juce::FileChooser& fc)
     {
@@ -463,6 +467,6 @@ void ChopForgeEditor::openExportDialog()
         if (f == juce::File()) return;
         if (! f.hasFileExtension ("mid")) f = f.withFileExtension ("mid");
         if (! processor.exportMidi (f))
-            juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "ChopForge", "Could not write the MIDI file.");
+            juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Kerf", "Could not write the MIDI file.");
     });
 }

@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-namespace cf
+namespace kerf
 {
 constexpr int kMaxSlices = 64;
 
@@ -63,4 +63,4 @@ struct SampleData
         return s;
     }
 };
-} // namespace cf
+} // namespace kerf

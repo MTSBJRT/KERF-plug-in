@@ -3,7 +3,7 @@
 #include "Engine/Randomizer.h"
 #include "Engine/SampleData.h"
 
-namespace cf::id
+namespace kerf::id
 {
 inline constexpr const char* division      = "division";
 inline constexpr const char* patternSlot   = "patternSlot";
@@ -32,7 +32,7 @@ inline constexpr const char* sensitivity   = "sensitivity";
 inline constexpr const char* captureBars   = "captureBars";
 }
 
-namespace cf
+namespace kerf
 {
 inline const juce::StringArray& divisionNames()
 {
@@ -89,4 +89,4 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
     p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::captureBars, 1 }, "Capture length", captureBarChoices(), 1));
     return { p.begin(), p.end() };
 }
-} // namespace cf
+} // namespace kerf

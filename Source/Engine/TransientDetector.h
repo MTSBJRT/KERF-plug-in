@@ -4,7 +4,7 @@
 #include <cmath>
 #include <algorithm>
 
-namespace cf
+namespace kerf
 {
 /** Evenly spaced markers. */
 inline std::vector<int> gridMarkers (int numFrames, int count)
@@ -92,4 +92,4 @@ inline std::vector<int> detectTransients (const juce::AudioBuffer<float>& buffer
     result.erase (std::unique (result.begin(), result.end()), result.end());
     return result;
 }
-} // namespace cf
+} // namespace kerf

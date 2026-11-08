@@ -9,13 +9,13 @@
 #include "UI/WaveformView.h"
 #include "UI/StepGrid.h"
 
-class ChopForgeEditor : public juce::AudioProcessorEditor,
+class KerfEditor : public juce::AudioProcessorEditor,
                         public juce::FileDragAndDropTarget,
                         private juce::Timer
 {
 public:
-    explicit ChopForgeEditor (ChopForgeProcessor&);
-    ~ChopForgeEditor() override;
+    explicit KerfEditor (KerfProcessor&);
+    ~KerfEditor() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -55,8 +55,8 @@ private:
     void openExportDialog();
     void setSlot (int slot);
 
-    ChopForgeProcessor& processor;
-    cf::ui::ChopLookAndFeel lookAndFeel;
+    KerfProcessor& processor;
+    kerf::ui::KerfLookAndFeel lookAndFeel;
     juce::TooltipWindow tooltipWindow { this, 600 };
     std::unique_ptr<juce::FileChooser> fileChooser;
 
@@ -67,15 +67,15 @@ private:
     Knob sliceCount, sensitivity;
 
     // main
-    cf::ui::WaveformView waveform;
-    cf::ui::StepGrid grid;
+    kerf::ui::WaveformView waveform;
+    kerf::ui::StepGrid grid;
 
     // sequence panel
     Combo division, seqMode;
     Knob swing, freeBpm;
     juce::Slider lengthSlider;
     juce::Label lengthLabel, patternLabel, sequenceTitle, randomTitle, outputTitle;
-    std::array<juce::TextButton, cf::kNumPatterns> slotButtons;
+    std::array<juce::TextButton, kerf::kNumPatterns> slotButtons;
     juce::TextButton copyButton, pasteButton;
 
     // random panel
@@ -92,8 +92,9 @@ private:
 
     int lastSampleVersion = -1, lastPatternVersion = -1;
     static constexpr int kFooterHeight = 222;
+    static constexpr int kLogoVariant = 0;   // 0 circular blade, 1 hand saw, 2 round seal (see UI/Logo.h)
     juce::Rectangle<int> screenBounds, namePlate;
     std::array<juce::Rectangle<int>, 3> footerPanels;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ChopForgeEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KerfEditor)
 };

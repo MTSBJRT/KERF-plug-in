@@ -5,7 +5,7 @@
 #include <memory>
 #include <cmath>
 
-namespace cf
+namespace kerf
 {
 enum class PitchMode { Varispeed = 0, Granular = 1 };
 
@@ -260,4 +260,4 @@ private:
     EngineSettings settings;
     int ageCounter = 0, lastSlice = -1;
 };
-} // namespace cf
+} // namespace kerf

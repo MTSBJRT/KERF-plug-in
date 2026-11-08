@@ -44,7 +44,7 @@ static juce::File writeTestWav()
         b.setSample (0, i, v);
         b.setSample (1, i, v);
     }
-    auto file = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("chopforge_test.wav");
+    auto file = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("kerf_test.wav");
     file.deleteFile();
     juce::WavAudioFormat wav;
     std::unique_ptr<juce::AudioFormatWriter> w (wav.createWriterFor (new juce::FileOutputStream (file), sr, 2, 16, {}, 0));
@@ -57,7 +57,7 @@ int main()
     juce::ScopedJuceInitialiser_GUI init; // message manager for AsyncUpdater
 
     auto wav = writeTestWav();
-    ChopForgeProcessor proc;
+    KerfProcessor proc;
     FakePlayHead ph;
     proc.setPlayHead (&ph);
     const double sr = 48000.0;
@@ -130,7 +130,7 @@ int main()
     proc.getStateInformation (state);
     CHECK (state.getSize() > 10000);
 
-    ChopForgeProcessor restored;
+    KerfProcessor restored;
     restored.setStateInformation (state.getData(), (int) state.getSize());
     auto rs = restored.getSample();
     CHECK (rs != nullptr);
@@ -144,7 +144,7 @@ int main()
     CHECK (restored.getCurrentPattern().length == 12);
 
     // ---- MIDI export
-    auto mid = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("chopforge_test.mid");
+    auto mid = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("kerf_test.mid");
     CHECK (proc.exportMidi (mid));
     {
         juce::FileInputStream in (mid);
@@ -158,7 +158,7 @@ int main()
 
     // ---- robustness: odd block sizes, re-prepare, empty state, mono layout, zero-length blocks
     {
-        ChopForgeProcessor r;
+        KerfProcessor r;
         FakePlayHead ph2;
         r.setPlayHead (&ph2);
         r.setStateInformation (state.getData(), (int) state.getSize());
@@ -192,7 +192,7 @@ int main()
         juce::MemoryBlock none;
         r.getStateInformation (none);
         CHECK (none.getSize() > 0);
-        ChopForgeProcessor fresh;
+        KerfProcessor fresh;
         juce::MemoryBlock freshState;
         fresh.getStateInformation (freshState);
         r.setStateInformation (freshState.getData(), (int) freshState.getSize());

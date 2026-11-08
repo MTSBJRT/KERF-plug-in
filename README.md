@@ -1,6 +1,6 @@
-# ChopForge
+# Kerf
 
-ChopForge is an original, open-source **audio chopper / slicer / re-sequencer** plugin
+Kerf is an original, open-source **audio chopper / slicer / re-sequencer** plugin
 (VST3, AU, Standalone) built with JUCE 9, dressed as a matte black brushed-metal unit. It takes a loop (loaded from a file or
 captured live from the track input), cuts it into slices and re-plays them through a
 step sequencer that can be randomised musically, edited by hand, played from MIDI and
@@ -8,13 +8,13 @@ exported as a MIDI clip.
 
 It was designed as an "improved take" on the commercial chop-and-remix plugins of the
 same family (32-slice choppers with per-slice pitch / reverse / gain and interval-snapped
-randomisation). ChopForge contains none of their code, graphics or names.
+randomisation). Kerf contains none of their code, graphics or names.
 
-![ChopForge UI](docs/screenshot.png)
+![Kerf UI](docs/screenshot.png)
 
 ## What it does better than a typical 32-slice chopper
 
-| Area | Typical chopper | ChopForge |
+| Area | Typical chopper | Kerf |
 | --- | --- | --- |
 | Slicing | Grid only, max 32 slices | Grid, **transient detection** or **manual markers** (drag / double-click / right-click on the waveform), up to **64 slices** |
 | Source | Load a file | Load or drop a file, or **capture the live input** for 1-8 bars, bar-aligned to the host |
@@ -36,8 +36,8 @@ brew install cmake ninja      # once
 ./scripts/build-macos.sh      # fetches JUCE, builds, runs the tests, installs VST3 + AU
 ```
 
-The script installs `ChopForge.vst3` into `~/Library/Audio/Plug-Ins/VST3` and
-`ChopForge.component` into `~/Library/Audio/Plug-Ins/Components`, then runs `auval`.
+The script installs `Kerf.vst3` into `~/Library/Audio/Plug-Ins/VST3` and
+`Kerf.component` into `~/Library/Audio/Plug-Ins/Components`, then runs `auval`.
 Add `--no-install` to only build, or `--universal` for an arm64 + x86_64 binary.
 
 ### Any platform - CMake
@@ -62,32 +62,32 @@ cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
 ```
 
-Artefacts land in `build/ChopForge_artefacts/Release/`:
+Artefacts land in `build/Kerf_artefacts/Release/`:
 
-- `VST3/ChopForge.vst3`
-- `AU/ChopForge.component` (macOS)
-- `Standalone/ChopForge` (`.app` / `.exe`)
+- `VST3/Kerf.vst3`
+- `AU/Kerf.component` (macOS)
+- `Standalone/Kerf` (`.app` / `.exe`)
 
-Pass `-DCHOPFORGE_COPY_PLUGIN=ON` to copy the plugin into the user plugin folder after
+Pass `-DKERF_COPY_PLUGIN=ON` to copy the plugin into the user plugin folder after
 each build (on Windows this targets `C:\Program Files\Common Files\VST3`, which needs
-an elevated shell). `-DCHOPFORGE_BUILD_TESTS=OFF` skips the test executables.
+an elevated shell). `-DKERF_BUILD_TESTS=OFF` skips the test executables.
 
 ### Tests
 
 ```bash
-cmake --build build --target ChopForgeTests ChopForgeHostTests
-./build/ChopForgeTests_artefacts/Release/ChopForgeTests
-./build/ChopForgeHostTests
+cmake --build build --target KerfTests KerfHostTests
+./build/KerfTests_artefacts/Release/KerfTests
+./build/KerfHostTests
 ```
 
-`ChopForgeTests` checks the DSP engine (slicing, transient detection, scale snapping,
-locks, voices, envelopes). `ChopForgeHostTests` drives the real `AudioProcessor` with a
+`KerfTests` checks the DSP engine (slicing, transient detection, scale snapping,
+locks, voices, envelopes). `KerfHostTests` drives the real `AudioProcessor` with a
 fake transport: host-synced stepping, MIDI triggering, undo/redo, manual markers, state
 save/restore including the FLAC-embedded audio, and MIDI export.
 
 ## Using it
 
-1. Insert ChopForge on an audio track. **LOAD** a loop, drop a file on the window, or
+1. Insert Kerf on an audio track. **LOAD** a loop, drop a file on the window, or
    arm **CAPTURE** to record the next 1-8 bars of the track input.
 2. Choose a slicing mode: **Grid** (N equal slices), **Transients** (attack detection,
    tune with *Sens*), or **Manual**. Markers are always editable on the waveform:
@@ -109,19 +109,19 @@ clock is used automatically.
 
 - *Preferences > Plug-Ins*: enable *Use VST3 Plug-In System Folders* (and *Use Audio
   Units* for the AU). Alt-click *Rescan* for a full scan.
-- Drop ChopForge on an audio track. The sequencer follows Live's transport and tempo.
+- Drop Kerf on an audio track. The sequencer follows Live's transport and tempo.
 - To play slices from a MIDI track: set its *MIDI To* to the audio track, then pick
-  *ChopForge* in the second menu. C1 = slice 1.
+  *Kerf* in the second menu. C1 = slice 1.
 - A step-by-step test checklist is in `docs/test-ableton.md` (in French).
 
 ### In Native Instruments Maschine 3
 
 1. After installing, open *Preferences > Plug-ins > Locations* and click *Rescan*.
-   ChopForge appears under the effects (VST3, and AU on macOS).
-2. To chop what a Group plays: load ChopForge as a Group or Master effect, start
+   Kerf appears under the effects (VST3, and AU on macOS).
+2. To chop what a Group plays: load Kerf as a Group or Master effect, start
    playback and click **CAPTURE**. Recording starts on the next bar and lasts the chosen
    number of bars. The sequencer follows the Maschine transport.
-3. To play slices from the pads: load ChopForge in the **first plug-in slot of a Sound**
+3. To play slices from the pads: load Kerf in the **first plug-in slot of a Sound**
    and set that Sound's input to the Group or Sound you want to chop. Maschine's pads
    send C1 and upward by default, which maps pads 1-16 to slices 1-16 in the
    *One-shot* and *Hold* MIDI modes. *Chromatic* mode plays one slice across the pads
@@ -148,7 +148,7 @@ Tests/             EngineTests (DSP), HostTests (processor driven by a fake host
 
 ## Licensing
 
-ChopForge's own sources are released under the GPLv3. JUCE and the VST3 SDK it pulls
+Kerf's own sources are released under the GPLv3. JUCE and the VST3 SDK it pulls
 in are available under GPLv3 or commercial licences; distributing a closed-source build
 requires the corresponding JUCE and Steinberg agreements. "VST" is a trademark of
 Steinberg Media Technologies GmbH.

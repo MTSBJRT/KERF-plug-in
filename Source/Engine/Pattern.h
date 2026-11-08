@@ -2,7 +2,7 @@
 #include <juce_core/juce_core.h>
 #include <array>
 
-namespace cf
+namespace kerf
 {
 constexpr int kMaxSteps    = 64;
 constexpr int kNumPatterns = 8;
@@ -113,4 +113,4 @@ struct PatternSet
 {
     std::array<Pattern, kNumPatterns> patterns;
 };
-} // namespace cf
+} // namespace kerf
