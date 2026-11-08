@@ -9,7 +9,7 @@
 namespace cf::ui
 {
 /* The "screen" (waveform + step grid) keeps a dark display look; everything around it is a
-   hand-built varnished oak cabinet with brass screws and brushed-steel controls. Every texture
+   matte black brushed-metal cabinet with steel screws and black anodised knobs. Every texture
    is rendered per pixel with a simple lighting model and cached; there are no image resources. */
 namespace colours
 {
@@ -26,20 +26,20 @@ namespace colours
     const juce::Colour waveform     { 0xff6ab4ff };
     const juce::Colour lock         { 0xfffacc15 };
 
-    // cabinet
-    const juce::Colour oakLight     { 0xffe9cf9a };
-    const juce::Colour oakMid       { 0xffcfa568 };
-    const juce::Colour oakDark      { 0xff96693a };
-    const juce::Colour oakPore      { 0xff5a3c1c };
-    const juce::Colour engraved     { 0xff2a1706 };
-    const juce::Colour engravedHi   { 0xffefd3a0 };
-    const juce::Colour brass        { 0xffc39a3e };
-    const juce::Colour brassLight   { 0xfff5df98 };
-    const juce::Colour brassDark    { 0xff6e4f0c };
-    const juce::Colour steelLight   { 0xffe9ebee };
-    const juce::Colour steelMid     { 0xffa3a7ae };
-    const juce::Colour steelDark    { 0xff4f535a };
-    const juce::Colour readout      { 0xff0f0d0a };
+    // cabinet: matte black brushed metal
+    const juce::Colour metal        { 0xff24262a };   // face plate
+    const juce::Colour metalDark    { 0xff17181b };   // recessed inlays
+    const juce::Colour metalPlate   { 0xff34373d };   // nameplate
+    const juce::Colour metalEdgeHi  { 0xff6c7079 };
+    const juce::Colour engraved     { 0xffd9dbe0 };   // light engraved lettering
+    const juce::Colour engravedHi   { 0xff8a8e97 };
+    const juce::Colour brass        { 0xff8e939c };   // trims are now dark steel
+    const juce::Colour brassLight   { 0xffd2d6dd };
+    const juce::Colour brassDark    { 0xff3b3e45 };
+    const juce::Colour steelLight   { 0xff9aa0a9 };
+    const juce::Colour steelMid     { 0xff3a3d43 };   // default button tint
+    const juce::Colour steelDark    { 0xff1c1e22 };
+    const juce::Colour readout      { 0xff0b0a08 };
     const juce::Colour readoutText  { 0xffffb648 };
     const juce::Colour ledOff       { 0xff3a2a12 };
     const juce::Colour ledOn        { 0xffffa21f };
@@ -102,60 +102,24 @@ namespace tex
 class Textures
 {
 public:
-    /** Varnished oak, several boards with seams, cathedral grain, pores and rays. */
-    const juce::Image& wood (int w, int h)
+    /** Matte black brushed face plate: fine horizontal brushing, very low contrast, slight anodised mottling. */
+    const juce::Image& face (int w, int h)
     {
-        // generated in 256 px steps so that live window resizing does not re-render every frame
         w = juce::jmax (256, ((w + 255) / 256) * 256);
         h = juce::jmax (256, ((h + 255) / 256) * 256);
-        if (woodImg.isValid() && woodImg.getWidth() == w && woodImg.getHeight() == h) return woodImg;
-        woodImg = juce::Image (juce::Image::ARGB, juce::jmax (1, w), juce::jmax (1, h), false);
-        juce::Image::BitmapData px (woodImg, juce::Image::BitmapData::writeOnly);
-        const int boards = juce::jmax (1, (int) std::round ((float) h / 150.0f));
-        const float boardH = (float) h / (float) boards;
-
-        for (int y = 0; y < woodImg.getHeight(); ++y)
-        {
-            const int   b     = juce::jmin (boards - 1, (int) ((float) y / boardH));
-            const float ly    = (float) y - (float) b * boardH;
-            const float seed  = tex::hash (b * 17 + 3, 91) * 1000.0f;
-            const float hueOf = (tex::hash (b, 7) - 0.5f) * 0.18f;      // per-board tint
-            for (int x = 0; x < woodImg.getWidth(); ++x)
+        if (faceImg.isValid() && faceImg.getWidth() == w && faceImg.getHeight() == h) return faceImg;
+        faceImg = juce::Image (juce::Image::ARGB, w, h, false);
+        juce::Image::BitmapData px (faceImg, juce::Image::BitmapData::writeOnly);
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x)
             {
-                const float fx = (float) x + seed;
-                // growth rings: long horizontal lines bent into cathedral arches by slow warping
-                // broad cathedral arches (very slow along x) plus a gentle wobble
-                const float arch  = (tex::noise (fx * 0.0011f, 3.1f + (float) b) - 0.5f) * 170.0f
-                                  + (tex::noise (fx * 0.0045f, ly * 0.006f) - 0.5f) * 18.0f
-                                  + tex::fbm (fx * 0.02f, ly * 0.05f, 3) * 3.0f;
-                const float spacing = 0.32f + 0.22f * tex::noise (fx * 0.0025f + 77.0f, ly * 0.012f);
-                const float field = (ly + arch) * spacing;
-                float ring = 0.5f + 0.5f * std::sin (field);
-                const float late = std::pow (ring, 7.0f) * (0.55f + 0.45f * tex::noise (fx * 0.006f, ly * 0.03f + 50.0f));
-                const float early = std::pow (1.0f - ring, 2.0f) * 0.10f;   // slightly lighter earlywood
-                // base tone drifts slowly
-                const float broad = tex::fbm (fx * 0.0015f, ly * 0.004f, 3);
-                float t = 0.60f + (broad - 0.5f) * 0.45f + hueOf - late * 0.62f + early;
-                juce::Colour c = colours::oakDark.interpolatedWith (colours::oakLight, juce::jlimit (0.0f, 1.0f, t));
-                // open pores: many short, fine dark dashes along the grain, denser in latewood
-                const float pores = tex::noise (fx * 0.7f, ly * 4.2f);
-                const float poreThreshold = 0.74f - late * 0.12f;
-                if (pores > poreThreshold) c = c.interpolatedWith (colours::oakPore, juce::jmin (0.5f, (pores - poreThreshold) * 3.0f));
-                // medullary rays: faint light flecks
-                const float rays = tex::noise (fx * 0.15f, ly * 1.6f + 200.0f);
-                if (rays > 0.86f) c = tex::addLight (c, (rays - 0.86f) * 0.8f);
-                // fine fibre texture
-                const float fibre = tex::noise (fx * 0.25f, ly * 2.0f + 400.0f);
-                c = tex::shade (c, 0.95f + fibre * 0.08f + tex::hash (x, y) * 0.03f);
-                // board seams: a dark groove with a lit lower edge
-                if (b > 0 && ly < 1.5f) c = tex::shade (c, 0.35f);
-                else if (b > 0 && ly < 2.5f) c = tex::shade (c, 0.6f);
-                else if (b > 0 && ly < 3.5f) c = tex::addLight (c, 0.10f);
-                if (b < boards - 1 && boardH - ly < 1.5f) c = tex::shade (c, 0.55f);
-                px.setPixelColour (x, y, c);
+                const float fx = (float) x, fy = (float) y;
+                const float streak = tex::noise (fx * 0.012f, fy * 2.6f) * 0.5f + tex::noise (fx * 0.05f, fy * 5.3f) * 0.3f + tex::hash (x, y) * 0.2f;
+                const float mottle = tex::fbm (fx * 0.004f, fy * 0.004f, 3);
+                const float v = 0.88f + (streak - 0.5f) * 0.16f + (mottle - 0.5f) * 0.10f;
+                px.setPixelColour (x, y, tex::shade (colours::metal, v));
             }
-        }
-        return woodImg;
+        return faceImg;
     }
 
     /** Tileable-enough brushed metal strip in a tint. Streaks run horizontally. */
@@ -171,7 +135,7 @@ public:
                 const float streak = tex::noise ((float) x * 0.018f, (float) y * 2.3f) * 0.55f
                                    + tex::noise ((float) x * 0.06f, (float) y * 4.7f) * 0.3f
                                    + tex::hash (x, y) * 0.15f;
-                px.setPixelColour (x, y, tex::shade (tint, 0.78f + streak * 0.42f));
+                px.setPixelColour (x, y, tex::shade (tint, 0.84f + streak * 0.30f));
             }
         return brushedImgs.emplace (tint.getARGB(), std::move (img)).first->second;
     }
@@ -225,10 +189,11 @@ public:
                 }
                 const float diffuse = juce::jmax (0.0f, n * L);
                 const float spec = std::pow (juce::jmax (0.0f, n * H), r > rimStart ? 14.0f : 60.0f);
-                float v = base * (0.30f + 0.95f * diffuse) + spec * 0.6f + spun + aniso + (knurl - 0.5f) * 0.18f * (r > rimStart ? 1.0f : 0.0f);
+                float v = base * (0.30f + 0.95f * diffuse) + spec * 0.9f + spun + aniso + (knurl - 0.5f) * 0.18f * (r > rimStart ? 1.0f : 0.0f);
                 v = juce::jlimit (0.0f, 1.0f, v * groove);
-                // cool steel tint
-                juce::Colour c = juce::Colour::fromFloatRGBA (v * 0.96f, v * 0.975f, v, alpha);
+                // black anodised aluminium: dark body, crisp highlights
+                const float k = r > rimStart ? 0.16f + v * 0.55f : 0.10f + v * 0.42f;
+                juce::Colour c = juce::Colour::fromFloatRGBA (k * 0.97f, k * 0.98f, k * 1.03f, alpha);
                 px.setPixelColour (x, y, c);
             }
         return knobImgs.emplace (diameter, img.rescaled (diameter, diameter, juce::Graphics::highResamplingQuality)).first->second;
@@ -274,8 +239,8 @@ public:
                 const float diffuse = juce::jmax (0.0f, n * L);
                 const float spec = std::pow (juce::jmax (0.0f, n * H), 30.0f);
                 const float v = juce::jlimit (0.0f, 1.0f, (0.35f + 0.75f * diffuse) * depth);
-                juce::Colour c = colours::brassDark.interpolatedWith (colours::brassLight, v);
-                c = tex::addLight (c, spec * 0.6f * depth);
+                juce::Colour c = colours::steelDark.interpolatedWith (colours::steelLight, v * 0.8f);
+                c = tex::addLight (c, spec * 0.7f * depth);
                 px.setPixelColour (x, y, c.withAlpha (alpha));
             }
         const int out = juce::jmax (6, diameter);
@@ -283,7 +248,7 @@ public:
     }
 
 private:
-    juce::Image woodImg;
+    juce::Image faceImg;
     std::map<juce::uint32, juce::Image> brushedImgs;
     std::map<int, juce::Image> knobImgs, screwImgs;
 };
@@ -296,7 +261,7 @@ public:
 
     ChopLookAndFeel()
     {
-        setColour (juce::ResizableWindow::backgroundColourId, colours::oakMid);
+        setColour (juce::ResizableWindow::backgroundColourId, colours::metal);
         setColour (juce::Label::textColourId, colours::engraved);
         setColour (juce::Slider::textBoxTextColourId, colours::readoutText);
         setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
@@ -324,16 +289,16 @@ public:
         setColour (juce::TooltipWindow::backgroundColourId, colours::readout);
         setColour (juce::TooltipWindow::textColourId, colours::readoutText);
         setColour (juce::TooltipWindow::outlineColourId, colours::brassDark);
-        setColour (juce::AlertWindow::backgroundColourId, colours::oakDark);
+        setColour (juce::AlertWindow::backgroundColourId, colours::metalDark);
         setColour (juce::AlertWindow::textColourId, colours::engravedHi);
     }
 
     Textures& textures() { return tx; }
 
     // ------------------------------------------------------------------ cabinet helpers
-    void drawWood (juce::Graphics& g, juce::Rectangle<int> area, float darken = 0.0f)
+    void drawFace (juce::Graphics& g, juce::Rectangle<int> area, float darken = 0.0f)
     {
-        const auto& img = tx.wood (juce::jmax (1, area.getWidth()), juce::jmax (1, area.getHeight()));
+        const auto& img = tx.face (juce::jmax (1, area.getWidth()), juce::jmax (1, area.getHeight()));
         g.drawImage (img, area.toFloat(), juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yTop | juce::RectanglePlacement::doNotResize);
         if (darken > 0.0f)
         {
@@ -342,22 +307,15 @@ public:
         }
     }
 
-    /** Varnish: broad gloss, a diagonal sheen, and an edge vignette. */
-    static void drawVarnish (juce::Graphics& g, juce::Rectangle<float> r)
+    /** Soft studio lighting on a matte surface: faint top light and an edge vignette. */
+    static void drawLighting (juce::Graphics& g, juce::Rectangle<float> r)
     {
-        juce::ColourGradient gloss (juce::Colours::white.withAlpha (0.13f), r.getX(), r.getY(),
-                                    juce::Colours::white.withAlpha (0.0f), r.getX(), r.getY() + r.getHeight() * 0.5f, false);
-        g.setGradientFill (gloss);
-        g.fillRect (r);
-        juce::ColourGradient sheen (juce::Colours::transparentWhite, r.getX(), r.getBottom(),
-                                    juce::Colours::transparentWhite, r.getRight(), r.getY(), false);
-        sheen.addColour (0.42, juce::Colours::white.withAlpha (0.0f));
-        sheen.addColour (0.5, juce::Colours::white.withAlpha (0.09f));
-        sheen.addColour (0.58, juce::Colours::white.withAlpha (0.0f));
-        g.setGradientFill (sheen);
+        juce::ColourGradient top (juce::Colours::white.withAlpha (0.06f), r.getX(), r.getY(),
+                                  juce::Colours::white.withAlpha (0.0f), r.getX(), r.getY() + r.getHeight() * 0.6f, false);
+        g.setGradientFill (top);
         g.fillRect (r);
         juce::ColourGradient vignette (juce::Colours::transparentBlack, r.getCentreX(), r.getCentreY(),
-                                       juce::Colours::black.withAlpha (0.33f), r.getX(), r.getY(), true);
+                                       juce::Colours::black.withAlpha (0.40f), r.getX(), r.getY(), true);
         g.setGradientFill (vignette);
         g.fillRect (r);
     }
@@ -367,7 +325,7 @@ public:
         // countersink: dark ring and a soft shadow below
         g.setColour (juce::Colours::black.withAlpha (0.5f));
         g.fillEllipse (cx - radius * 1.2f, cy - radius * 1.05f, radius * 2.4f, radius * 2.5f);
-        g.setColour (juce::Colour (0xff1a0e04));
+        g.setColour (juce::Colour (0xff08090b));
         g.fillEllipse (cx - radius * 1.12f, cy - radius * 1.12f, radius * 2.24f, radius * 2.24f);
         const int d = juce::jmax (6, (int) std::round (radius * 2.0f));
         const auto& img = tx.screw (d, angleIndex);
@@ -382,7 +340,7 @@ public:
         drawScrew (g, r.getRight() - inset, r.getBottom() - inset, radius, 2);
     }
 
-    /** A recessed, routed wooden inlay with a thin brass trim. */
+    /** A recessed, machined pocket in the face plate. */
     void drawInlay (juce::Graphics& g, juce::Rectangle<int> area)
     {
         auto r = area.toFloat();
@@ -391,27 +349,24 @@ public:
             juce::Path clip;
             clip.addRoundedRectangle (r, kPanelRadius);
             g.reduceClipRegion (clip);
-            drawWood (g, area, 0.14f);
-            // routed edge: shadow from the top and left walls
-            juce::ColourGradient top (juce::Colours::black.withAlpha (0.55f), r.getX(), r.getY(), juce::Colours::transparentBlack, r.getX(), r.getY() + 12.0f, false);
+            g.setTiledImageFill (tx.brushed (colours::metalDark), (int) r.getX(), (int) r.getY(), 1.0f);
+            g.fillRect (r);
+            juce::ColourGradient top (juce::Colours::black.withAlpha (0.65f), r.getX(), r.getY(), juce::Colours::transparentBlack, r.getX(), r.getY() + 14.0f, false);
             g.setGradientFill (top);
-            g.fillRect (r.withHeight (12.0f));
-            juce::ColourGradient left (juce::Colours::black.withAlpha (0.35f), r.getX(), r.getY(), juce::Colours::transparentBlack, r.getX() + 8.0f, r.getY(), false);
+            g.fillRect (r.withHeight (14.0f));
+            juce::ColourGradient left (juce::Colours::black.withAlpha (0.4f), r.getX(), r.getY(), juce::Colours::transparentBlack, r.getX() + 10.0f, r.getY(), false);
             g.setGradientFill (left);
-            g.fillRect (r.withWidth (8.0f));
-            // lit bottom wall
-            g.setColour (colours::oakLight.withAlpha (0.35f));
+            g.fillRect (r.withWidth (10.0f));
+            g.setColour (juce::Colours::white.withAlpha (0.10f));
             g.fillRect (r.getX(), r.getBottom() - 1.5f, r.getWidth(), 1.5f);
         }
-        // chamfer highlight above, shadow below, brass trim
-        g.setColour (colours::oakLight.withAlpha (0.55f));
+        // machined edge: lit upper lip, dark lower lip, thin steel trim
+        g.setColour (juce::Colours::white.withAlpha (0.20f));
         g.drawRoundedRectangle (r.expanded (1.5f).translated (0.0f, -0.5f), kPanelRadius + 1.0f, 1.0f);
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
+        g.setColour (juce::Colours::black.withAlpha (0.7f));
         g.drawRoundedRectangle (r.expanded (1.5f).translated (0.0f, 1.0f), kPanelRadius + 1.0f, 1.0f);
-        g.setColour (colours::brass);
-        g.drawRoundedRectangle (r.reduced (0.5f), kPanelRadius, 1.2f);
-        g.setColour (colours::brassDark.withAlpha (0.9f));
-        g.drawRoundedRectangle (r.reduced (1.6f), kPanelRadius - 1.0f, 0.8f);
+        g.setColour (colours::brass.withAlpha (0.55f));
+        g.drawRoundedRectangle (r.reduced (0.5f), kPanelRadius, 1.0f);
     }
 
     /** Dark anodised frame around the display components. */
@@ -430,7 +385,7 @@ public:
             g.setGradientFill (light);
             g.fillRect (r);
         }
-        g.setColour (colours::brass.withAlpha (0.7f));
+        g.setColour (colours::metalEdgeHi.withAlpha (0.8f));
         g.drawRoundedRectangle (r.reduced (0.5f), kPanelRadius, 1.0f);
         // glass recess
         auto inner = r.reduced (6.0f);
@@ -452,10 +407,10 @@ public:
             juce::Path clip;
             clip.addRoundedRectangle (r, kButtonRadius);
             g.reduceClipRegion (clip);
-            g.setTiledImageFill (tx.brushed (colours::brass), (int) r.getX(), (int) r.getY(), 1.0f);
+            g.setTiledImageFill (tx.brushed (colours::metalPlate), (int) r.getX(), (int) r.getY(), 1.0f);
             g.fillRect (r);
-            juce::ColourGradient light (juce::Colours::white.withAlpha (0.28f), r.getX(), r.getY(), juce::Colours::black.withAlpha (0.18f), r.getX(), r.getBottom(), false);
-            light.addColour (0.45, juce::Colours::white.withAlpha (0.04f));
+            juce::ColourGradient light (juce::Colours::white.withAlpha (0.16f), r.getX(), r.getY(), juce::Colours::black.withAlpha (0.25f), r.getX(), r.getBottom(), false);
+            light.addColour (0.45, juce::Colours::white.withAlpha (0.03f));
             g.setGradientFill (light);
             g.fillRect (r);
         }
@@ -468,9 +423,9 @@ public:
     /** Bevelled edge: light top/left, dark bottom/right, black outline. */
     static void drawChamfer (juce::Graphics& g, juce::Rectangle<float> r, float radius)
     {
-        g.setColour (juce::Colours::white.withAlpha (0.55f));
+        g.setColour (juce::Colours::white.withAlpha (0.32f));
         g.drawLine (r.getX() + radius, r.getY() + 0.5f, r.getRight() - radius, r.getY() + 0.5f, 1.0f);
-        g.setColour (juce::Colours::white.withAlpha (0.25f));
+        g.setColour (juce::Colours::white.withAlpha (0.14f));
         g.drawLine (r.getX() + 0.5f, r.getY() + radius, r.getX() + 0.5f, r.getBottom() - radius, 1.0f);
         g.setColour (juce::Colours::black.withAlpha (0.45f));
         g.drawLine (r.getX() + radius, r.getBottom() - 0.5f, r.getRight() - radius, r.getBottom() - 0.5f, 1.0f);
@@ -484,7 +439,7 @@ public:
                                   juce::Justification just, juce::Colour ink = colours::engraved, float alphaHi = 0.55f)
     {
         const bool lightInk = ink.getPerceivedBrightness() > 0.5f;
-        g.setColour (lightInk ? juce::Colours::black.withAlpha (0.75f) : colours::engravedHi.withAlpha (alphaHi));
+        g.setColour (lightInk ? juce::Colours::black.withAlpha (0.85f) : colours::engravedHi.withAlpha (alphaHi));
         g.drawText (text, area.translated (0, 1), just, false);
         g.setColour (ink);
         g.drawText (text, area, just, false);
@@ -519,8 +474,8 @@ public:
             g.reduceClipRegion (clip);
             g.setTiledImageFill (tx.brushed (tint), (int) r.getX(), (int) r.getY(), 1.0f);
             g.fillRect (r);
-            juce::Colour top = juce::Colours::white.withAlpha (pressed ? 0.02f : 0.30f);
-            juce::Colour bottom = juce::Colours::black.withAlpha (pressed ? 0.35f : 0.22f);
+            juce::Colour top = juce::Colours::white.withAlpha (pressed ? 0.02f : 0.16f);
+            juce::Colour bottom = juce::Colours::black.withAlpha (pressed ? 0.40f : 0.28f);
             juce::ColourGradient light (top, r.getX(), r.getY(), bottom, r.getX(), r.getBottom(), false);
             light.addColour (0.48, juce::Colours::white.withAlpha (0.06f));
             light.addColour (0.52, juce::Colours::black.withAlpha (0.04f));
@@ -548,13 +503,13 @@ public:
         const float angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
         const bool enabled = slider.isEnabled();
 
-        // value arc: a groove in the wood, lit amber
+        // value arc: a machined groove, lit amber
         const float arcR = radius - 2.0f;
         juce::Path track;
         track.addCentredArc (centre.x, centre.y, arcR, arcR, 0.0f, rotaryStartAngle, rotaryEndAngle, true);
         g.setColour (juce::Colours::black.withAlpha (0.55f));
         g.strokePath (track, juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        g.setColour (colours::oakLight.withAlpha (0.25f));
+        g.setColour (juce::Colours::white.withAlpha (0.10f));
         g.strokePath (track, juce::PathStrokeType (1.0f), juce::AffineTransform::translation (0.0f, 1.5f));
         const bool bipolar = slider.getMinimum() < 0.0 && slider.getMaximum() > 0.0;
         const float zeroAngle = bipolar ? rotaryStartAngle + (float) ((0.0 - slider.getMinimum()) / (slider.getMaximum() - slider.getMinimum()))
@@ -625,8 +580,8 @@ public:
         auto area = b.getLocalBounds().reduced (3, 1).withTrimmedBottom (2);
         if (b.getToggleState()) area.removeFromBottom (3);
         if (isButtonDown) area.translate (0, 1);
-        const auto ink = b.isEnabled() ? colours::engraved : colours::engraved.withAlpha (0.4f);
-        g.setColour (juce::Colours::white.withAlpha (0.5f));
+        const auto ink = b.isEnabled() ? colours::engraved : colours::engraved.withAlpha (0.35f);
+        g.setColour (juce::Colours::black.withAlpha (0.8f));
         g.drawFittedText (b.getButtonText(), area.translated (0, 1), juce::Justification::centred, 1, 0.9f);
         g.setColour (ink);
         g.drawFittedText (b.getButtonText(), area, juce::Justification::centred, 1, 0.9f);
@@ -646,7 +601,7 @@ public:
         // brass bezel ring
         g.setColour (juce::Colours::black.withAlpha (0.6f));
         g.fillEllipse (led.expanded (2.0f).translated (0.0f, 1.0f));
-        juce::ColourGradient ring (colours::brassLight, led.getX(), led.getY(), colours::brassDark, led.getRight(), led.getBottom(), false);
+        juce::ColourGradient ring (colours::steelLight, led.getX(), led.getY(), colours::steelDark, led.getRight(), led.getBottom(), false);
         g.setGradientFill (ring);
         g.fillEllipse (led.expanded (2.0f));
         g.setColour (juce::Colours::black);
@@ -715,13 +670,13 @@ public:
         {
             // deep engraving in brass: lit lower edge, shadowed upper edge, dark floor
             const auto just = label.getJustificationType();
-            g.setColour (colours::brassLight.withAlpha (0.9f));
+            g.setColour (juce::Colours::black.withAlpha (0.9f));
             g.drawText (label.getText(), area.translated (0, 2), just, false);
-            g.setColour (colours::brassLight.withAlpha (0.5f));
+            g.setColour (juce::Colours::black.withAlpha (0.6f));
             g.drawText (label.getText(), area.translated (1, 1), just, false);
-            g.setColour (juce::Colours::black.withAlpha (0.55f));
+            g.setColour (juce::Colours::white.withAlpha (0.18f));
             g.drawText (label.getText(), area.translated (0, -1), just, false);
-            g.setColour (juce::Colour (0xff2b1c06));
+            g.setColour (colours::engraved);
             g.drawText (label.getText(), area, just, false);
             return;
         }

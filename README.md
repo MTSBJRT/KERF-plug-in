@@ -1,7 +1,7 @@
 # ChopForge
 
 ChopForge is an original, open-source **audio chopper / slicer / re-sequencer** plugin
-(VST3, AU, Standalone) built with JUCE 9. It takes a loop (loaded from a file or
+(VST3, AU, Standalone) built with JUCE 9, dressed as a matte black brushed-metal unit. It takes a loop (loaded from a file or
 captured live from the track input), cuts it into slices and re-plays them through a
 step sequencer that can be randomised musically, edited by hand, played from MIDI and
 exported as a MIDI clip.

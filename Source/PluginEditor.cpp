@@ -107,7 +107,7 @@ ChopForgeEditor::ChopForgeEditor (ChopForgeProcessor& p)
     makeToggle (rndPitch, rndPitchAtt, id::rndPitch, "Pitch");
     makeToggle (rndFx, rndFxAtt, id::rndFx, "FX");
     makeButton (randomizeButton, "RANDOMIZE", "Randomize the unlocked steps (shortcut: R)", [this] { processor.randomize(); });
-    randomizeButton.setColour (juce::TextButton::buttonColourId, colours::brass);
+    randomizeButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff6b4a12));
     makeButton (undoButton, "UNDO", "Undo the last pattern change (Ctrl+Z)", [this] { processor.undo(); });
     makeButton (redoButton, "REDO", "Redo (Ctrl+Shift+Z)", [this] { processor.redo(); });
     makeButton (resetButton, "RESET", "Reset the pattern to play the slices in order", [this] { processor.resetPattern(); });
@@ -191,8 +191,8 @@ void ChopForgeEditor::layoutCombo (Combo& c, juce::Rectangle<int> area)
 void ChopForgeEditor::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds();
-    lookAndFeel.drawWood (g, bounds);
-    cf::ui::ChopLookAndFeel::drawVarnish (g, bounds.toFloat());
+    lookAndFeel.drawFace (g, bounds);
+    cf::ui::ChopLookAndFeel::drawLighting (g, bounds.toFloat());
 
     lookAndFeel.drawBrassPlate (g, namePlate.toFloat());
     lookAndFeel.drawScreenBezel (g, screenBounds.toFloat());
@@ -215,6 +215,7 @@ void ChopForgeEditor::resized()
     // ---- header
     auto header = area.removeFromTop (62);
     titleLabel.setBounds (header.removeFromLeft (170).withTrimmedBottom (24).withTrimmedTop (1));
+    header.removeFromLeft (18);
     sampleLabel.setBounds (titleLabel.getBounds().withY (titleLabel.getBottom() + 2).withHeight (18).withWidth (300));
     bpmLabel.setBounds (header.removeFromRight (200).withTrimmedTop (4));
 
@@ -356,7 +357,7 @@ void ChopForgeEditor::updateCaptureButton()
             break;
         case ChopForgeProcessor::CaptureState::armed:
             captureButton.setButtonText ("ARMED");
-            captureButton.setColour (juce::TextButton::buttonColourId, colours::brass);
+            captureButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff6b4a12));
             break;
         case ChopForgeProcessor::CaptureState::recording:
         case ChopForgeProcessor::CaptureState::done:
