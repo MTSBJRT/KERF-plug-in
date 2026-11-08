@@ -34,12 +34,14 @@ private:
         juce::Slider slider;
         juce::Label label;
         std::unique_ptr<SliderAttachment> attachment;
+        bool onWood = false;
     };
     struct Combo
     {
         juce::ComboBox box;
         juce::Label label;
         std::unique_ptr<ComboAttachment> attachment;
+        bool onWood = false;
     };
 
     void makeKnob (Knob& k, const char* paramId, const juce::String& text, const juce::String& tooltip = {});
@@ -89,7 +91,9 @@ private:
     Knob chromSlice;
 
     int lastSampleVersion = -1, lastPatternVersion = -1;
-    static constexpr int kFooterHeight = 188;
+    static constexpr int kFooterHeight = 196;
+    juce::Rectangle<int> screenBounds, namePlate;
+    std::array<juce::Rectangle<int>, 3> footerPanels;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ChopForgeEditor)
 };
