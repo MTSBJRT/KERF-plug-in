@@ -92,7 +92,7 @@ private:
 
     int lastSampleVersion = -1, lastPatternVersion = -1;
     static constexpr int kFooterHeight = 222;
-    static constexpr int kLogoVariant = 0;   // 0 circular blade, 1 hand saw, 2 round seal (see UI/Logo.h)
+    static constexpr int kLogoVariant = 2;   // 0 circular blade, 1 hand saw, 2 round seal (see UI/Logo.h)
     juce::Rectangle<int> screenBounds, namePlate;
     std::array<juce::Rectangle<int>, 3> footerPanels;
 

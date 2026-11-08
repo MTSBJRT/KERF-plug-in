@@ -16,7 +16,7 @@ int main (int argc, char** argv)
     const auto& wear = tx.brushed (kerf::ui::colours::metalDark);
     const char* names[] = { "A  -  lame circulaire + KERF, trait de scie dans la ligne de base",
                             "B  -  silhouette de scie egoine, KERF decoupe dans la lame",
-                            "C  -  cachet rond dente, KERF au centre, trait de scie a travers" };
+                            "C  -  disque dente plein, KERF en reserve dans l'encre" };
     for (int v = 0; v < 3; ++v)
     {
         auto row = juce::Rectangle<float> (30.0f, 20.0f + v * 130.0f, (float) w - 60.0f, 110.0f);

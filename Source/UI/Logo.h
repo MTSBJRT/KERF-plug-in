@@ -73,7 +73,7 @@ inline float textWidth (const juce::String& text, const juce::Font& font)
 /** Builds the whole stamp as one path so it can be inked and weathered in one go.
     variant 0: circular blade + KERF wordmark with a kerf cut through the baseline
     variant 1: hand-saw silhouette with KERF cut out of the blade
-    variant 2: round seal: toothed ring, KERF inside, saw cut through the ring */
+    variant 2: solid toothed disc with KERF knocked out of the ink */
 inline juce::Path stamp (juce::Rectangle<float> area, int variant)
 {
     juce::Path p;
@@ -107,11 +107,9 @@ inline juce::Path stamp (juce::Rectangle<float> area, int variant)
     }
     else
     {
-        const float r = h * 0.48f;
+        // solid toothed disc with KERF knocked out of the ink
+        const float r = juce::jmin (h, area.getWidth()) * 0.48f;
         const juce::Point<float> c (area.getX() + r + 2.0f, area.getCentreY());
-        // toothed ring: outer blade outline minus an inner disc (no arbor or vents)
-        juce::Path ring;
-        ring.setUsingNonZeroWinding (false);
         const int teeth = 24;
         const float step = juce::MathConstants<float>::twoPi / (float) teeth;
         for (int i = 0; i < teeth; ++i)
@@ -120,19 +118,15 @@ inline juce::Path stamp (juce::Rectangle<float> area, int variant)
             const juce::Point<float> tip (c.x + std::cos (a0) * r, c.y + std::sin (a0) * r);
             const juce::Point<float> gullet (c.x + std::cos (a1) * r * 0.84f, c.y + std::sin (a1) * r * 0.84f);
             const juce::Point<float> shoulder (c.x + std::cos (a2 - step * 0.12f) * r * 0.88f, c.y + std::sin (a2 - step * 0.12f) * r * 0.88f);
-            if (i == 0) ring.startNewSubPath (tip); else ring.lineTo (tip);
-            ring.lineTo (gullet);
-            ring.lineTo (shoulder);
+            if (i == 0) p.startNewSubPath (tip); else p.lineTo (tip);
+            p.lineTo (gullet);
+            p.lineTo (shoulder);
         }
-        ring.closeSubPath();
-        ring.addEllipse (juce::Rectangle<float> (r * 1.44f, r * 1.44f).withCentre (c));
-        p.addPath (ring);
-        juce::Font f (juce::FontOptions (r * 0.50f, juce::Font::bold));
-        f.setExtraKerningFactor (0.08f);
+        p.closeSubPath();
+        juce::Font f (juce::FontOptions (r * 0.56f, juce::Font::bold));
+        f.setExtraKerningFactor (0.06f);
         const float w = textWidth ("KERF", f);
-        p.addPath (textPath ("KERF", f, c.x - w * 0.5f, c.y + r * 0.16f));
-        // saw cut straight through the seal, below the word
-        p.addRectangle (c.x - r * 0.98f, c.y + r * 0.36f, r * 1.96f, juce::jmax (1.5f, r * 0.06f));
+        p.addPath (textPath ("KERF", f, c.x - w * 0.5f, c.y + r * 0.20f));
     }
     return p;
 }

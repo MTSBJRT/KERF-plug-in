@@ -218,12 +218,12 @@ void KerfEditor::resized()
 
     // ---- header
     auto header = area.removeFromTop (62);
-    titleLabel.setBounds (header.removeFromLeft (150).withTrimmedBottom (22).withTrimmedTop (0));
-    header.removeFromLeft (18);
-    sampleLabel.setBounds (titleLabel.getBounds().withY (titleLabel.getBottom() + 2).withHeight (18).withWidth (300));
+    titleLabel.setBounds (header.removeFromLeft (header.getHeight()));   // square stamp area
+    header.removeFromLeft (14);
+    sampleLabel.setBounds (header.getX(), header.getBottom() - 16, 360, 16);
     bpmLabel.setBounds (header.removeFromRight (200).withTrimmedTop (4));
 
-    auto h = header.withTrimmedTop (18).withHeight (26);
+    auto h = header.withTrimmedTop (14).withHeight (26);
     captureButton.setBounds (h.removeFromLeft (88)); h.removeFromLeft (4);
     loadButton.setBounds (h.removeFromLeft (60));    h.removeFromLeft (4);
     clearButton.setBounds (h.removeFromLeft (60));   h.removeFromLeft (4);
@@ -336,7 +336,7 @@ void KerfEditor::resized()
     waveform.setBounds (area.removeFromTop (juce::jmax (110, area.getHeight() / 3)));
     area.removeFromTop (6);
     grid.setBounds (area);
-    namePlate = titleLabel.getBounds().withTrimmedTop (2).withTrimmedBottom (2);
+    namePlate = titleLabel.getBounds();
 }
 
 // =============================================================================== behaviour
