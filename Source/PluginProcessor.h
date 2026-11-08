@@ -46,6 +46,7 @@ public:
     void clearSample();
     void setMarkers (std::vector<int> markers, bool switchToManual = true);
     void reslice();                                              // re-apply the current slice mode
+    void applyLoopLength();                                      // re-apply the Loop length parameter
     static constexpr double kMaxSampleSeconds = 60.0;
 
     // ---------------------------------------------------------------- patterns (message thread)
@@ -79,6 +80,7 @@ public:
     std::atomic<int>   currentSlice { -1 };
     std::atomic<int>   activeVoices { 0 };
     std::atomic<float> hostBpm      { 120.0f };
+    std::atomic<float> currentStretch { 1.0f };
     std::atomic<bool>  transportRunning { false };
     std::atomic<int>   sampleVersion { 0 };   // bumped whenever the sample or markers change
     std::atomic<int>   patternVersion { 0 };  // bumped whenever a pattern changes
@@ -97,7 +99,8 @@ private:
     void handleAsyncUpdate() override;
 
     void publishPatterns();
-    void publishSample (std::shared_ptr<const kerf::SampleData> s);
+    void publishSample (std::shared_ptr<kerf::SampleData> s, bool fitGridToLoop);
+    int  resolveLoopBars (double seconds) const;
     std::vector<int> computeMarkers (const juce::AudioBuffer<float>& audio, double rate, const std::vector<int>& existing) const;
     void finishCapture();
 
@@ -122,6 +125,7 @@ private:
     int numEvents = 0;
     juce::int64 lastStepK = std::numeric_limits<juce::int64>::min();
     double freePpq = 0.0;
+    double blockStretch = 1.0;
     bool wasPlaying = false;
 
     // capture
@@ -138,7 +142,11 @@ private:
     std::vector<UndoEntry> undoStack, redoStack;
     std::optional<kerf::Pattern> clipboard;
     std::atomic<bool> needsReslice { false };
+    std::atomic<bool> needsLoopUpdate { false };
     std::atomic<bool> captureNeedsFinish { false };
+    std::atomic<bool> randomizeRequested { false };
+    std::atomic<bool> captureRequested { false };
+    bool lastRandomizeTrig = false, lastCaptureTrig = false;
     juce::AudioFormatManager formatManager;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KerfProcessor)

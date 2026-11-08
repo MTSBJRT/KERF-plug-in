@@ -6,6 +6,7 @@
 #include "Engine/Randomizer.h"
 #include "Engine/TransientDetector.h"
 #include "Engine/SliceEngine.h"
+#include "Engine/LoopDetect.h"
 #include <iostream>
 
 static int failures = 0;
@@ -116,6 +117,48 @@ static void testRandomizerLocks()
     }
 }
 
+static void testLoopDetection()
+{
+    CHECK (detectLoopBars (2.0, 120.0) == 1);      // 1 bar at 120
+    CHECK (detectLoopBars (4.0, 120.0) == 2);      // 2 bars at 120 (1 bar would be 60 bpm)
+    CHECK (detectLoopBars (8.0, 120.0) == 4);
+    CHECK (detectLoopBars (2.667, 90.0) == 1);     // 1 bar at 90
+    CHECK (detectLoopBars (1.0, 120.0) == 1);      // too short: 240 bpm is out of range, falls back to 1 bar
+    CHECK (detectLoopBars (16.0, 120.0) == 8);
+    auto smp = makeSineSample (44100.0, 2.0, 4);
+    smp->setLoopBars (1);
+    CHECK (std::abs (smp->loopBpm - 120.0) < 0.01);
+    smp->setLoopBars (2);
+    CHECK (std::abs (smp->loopBpm - 240.0) < 0.01);
+}
+
+static void testStretch()
+{
+    const double sr = 48000.0;
+    auto smp = makeSineSample (sr, 1.0, 4);         // slices of 0.25 s = 12000 samples
+    SliceEngine engine;
+    engine.prepare (sr, 256);
+    EngineSettings es = engine.getSettings();
+    es.pitchMode = PitchMode::Granular;
+    engine.setSettings (es);
+    TriggerInfo t;
+    t.step.slice = 0;
+    t.stretch = 1.5;                                 // host faster than the loop: slice must end after 8000 samples
+    engine.trigger (t, smp);
+    juce::AudioBuffer<float> out (2, 16000);
+    out.clear();
+    for (int pos = 0; pos < 16000; pos += 256) engine.render (out, pos, 256);
+    CHECK (rms (out, 6000, 1000) > 0.2f);
+    CHECK (rms (out, 9000, 2000) < 1e-4f);
+    t.stretch = 0.5;                                 // host slower: slice lasts 24000 samples
+    engine.trigger (t, smp);
+    juce::AudioBuffer<float> out2 (2, 26000);
+    out2.clear();
+    for (int pos = 0; pos < 26000; pos += 256) engine.render (out2, pos, 256);
+    CHECK (rms (out2, 20000, 1000) > 0.2f);
+    CHECK (rms (out2, 24500, 1000) < 1e-4f);
+}
+
 static void testEngine()
 {
     const double sr = 48000.0;
@@ -202,6 +245,8 @@ int main()
     testTransientDetection();
     testScaleSnapping();
     testRandomizerLocks();
+    testLoopDetection();
+    testStretch();
     testEngine();
     if (failures == 0) std::cout << "All engine tests passed." << std::endl;
     else std::cerr << failures << " check(s) failed." << std::endl;

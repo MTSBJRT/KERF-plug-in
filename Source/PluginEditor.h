@@ -63,8 +63,10 @@ private:
     // header
     juce::Label titleLabel, sampleLabel, bpmLabel;
     juce::TextButton captureButton, loadButton, clearButton, exportButton;
-    Combo captureBars, sliceMode;
+    Combo captureBars, sliceMode, loopBars;
     Knob sliceCount, sensitivity;
+    juce::ToggleButton tempoSync;
+    std::unique_ptr<ButtonAttachment> tempoSyncAtt;
 
     // main
     kerf::ui::WaveformView waveform;
@@ -87,7 +89,7 @@ private:
 
     // output panel
     Knob mix, outGain, declick, grain;
-    Combo pitchMode, polyphony, midiMode;
+    Combo pitchMode, polyphony, midiMode, midiBase;
     Knob chromSlice;
 
     int lastSampleVersion = -1, lastPatternVersion = -1;

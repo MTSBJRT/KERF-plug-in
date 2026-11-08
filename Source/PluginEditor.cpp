@@ -42,6 +42,12 @@ KerfEditor::KerfEditor (KerfProcessor& p)
     makeCombo (sliceMode, id::sliceMode, "Slicing", "Grid: equal slices. Transients: detect attacks. Manual: edit markers on the waveform");
     makeKnob (sliceCount, id::sliceCount, "Slices", "Number of grid slices (or maximum for transient detection)");
     makeKnob (sensitivity, id::sensitivity, "Sens", "Transient detection sensitivity");
+    loopBars.onWood = true;
+    makeCombo (loopBars, id::loopBars, "Loop", "Musical length of the loaded loop. Auto guesses it from the duration and the project tempo");
+    tempoSync.setButtonText ("Sync");
+    tempoSync.setTooltip ("Play the loop at the project tempo: slices are time-stretched so the groove stays intact");
+    tempoSyncAtt = std::make_unique<ButtonAttachment> (processor.apvts, id::tempoSync, tempoSync);
+    addAndMakeVisible (tempoSync);
 
     // ------------------------------------------------------------ main
     addAndMakeVisible (waveform);
@@ -123,15 +129,16 @@ KerfEditor::KerfEditor (KerfProcessor& p)
     makeKnob (grain, id::grain, "Grain", "Grain size for the length-preserving pitch mode");
     makeCombo (pitchMode, id::pitchMode, "Pitch", "Varispeed changes the length with the pitch; Granular keeps the slice length");
     makeCombo (polyphony, id::polyphony, "Voices", "Mono chokes the previous slice when a new one starts");
-    makeCombo (midiMode, id::midiMode, "MIDI", "One-shot/hold: C1 and up play slices. Chromatic: notes pitch the chosen slice around C3");
+    makeCombo (midiMode, id::midiMode, "MIDI", "One-shot/hold: pads/keys from the base note play slices 1, 2, 3... Chromatic: notes pitch the chosen slice around C3");
+    makeCombo (midiBase, id::midiBase, "Base", "MIDI note of slice 1 (Maschine pads in keyboard mode default to C1 = 36)");
     makeKnob (chromSlice, id::chromSlice, "Chrom", "Slice played in chromatic MIDI mode");
 
     if (auto autoload = juce::SystemStats::getEnvironmentVariable ("KERF_AUTOLOAD", {}); autoload.isNotEmpty() && processor.getSample() == nullptr)
         processor.loadFile (juce::File (autoload));
 
     setResizable (true, true);
-    setResizeLimits (980, 660, 1920, 1200);
-    setSize (1100, 760);
+    setResizeLimits (1060, 660, 1920, 1200);
+    setSize (1120, 760);
     startTimerHz (30);
 }
 
@@ -221,7 +228,7 @@ void KerfEditor::resized()
     titleLabel.setBounds (header.removeFromLeft (header.getHeight()));   // square stamp area
     header.removeFromLeft (14);
     sampleLabel.setBounds (header.getX(), header.getBottom() - 16, 360, 16);
-    bpmLabel.setBounds (header.removeFromRight (200).withTrimmedTop (4));
+    bpmLabel.setBounds (header.removeFromRight (170).withTrimmedTop (4));
 
     auto h = header.withTrimmedTop (14).withHeight (26);
     captureButton.setBounds (h.removeFromLeft (88)); h.removeFromLeft (4);
@@ -231,7 +238,9 @@ void KerfEditor::resized()
     layoutCombo (captureBars, header.withTrimmedTop (2).withX (h.getX()).withWidth (80)); h.removeFromLeft (88);
     layoutCombo (sliceMode, header.withTrimmedTop (2).withX (h.getX()).withWidth (100)); h.removeFromLeft (108);
     layoutKnob (sliceCount, header.withX (h.getX()).withWidth (70).withHeight (62)); h.removeFromLeft (74);
-    layoutKnob (sensitivity, header.withX (h.getX()).withWidth (70).withHeight (62));
+    layoutKnob (sensitivity, header.withX (h.getX()).withWidth (70).withHeight (62)); h.removeFromLeft (76);
+    layoutCombo (loopBars, header.withTrimmedTop (2).withX (h.getX()).withWidth (84)); h.removeFromLeft (90);
+    tempoSync.setBounds (h.getX(), header.getY() + 18, 64, 24);
 
     area.removeFromTop (8);
 
@@ -324,10 +333,11 @@ void KerfEditor::resized()
     outPanel.removeFromTop (4);
     {
         auto row = outPanel.removeFromTop (40);
-        const int w = (row.getWidth() - 12) / 3;
+        const int w = (row.getWidth() - 18) / 4;
         layoutCombo (pitchMode, row.removeFromLeft (w)); row.removeFromLeft (6);
         layoutCombo (polyphony, row.removeFromLeft (w)); row.removeFromLeft (6);
-        layoutCombo (midiMode, row.removeFromLeft (w));
+        layoutCombo (midiMode, row.removeFromLeft (w)); row.removeFromLeft (6);
+        layoutCombo (midiBase, row.removeFromLeft (w));
     }
 
     // ---- main (the screen)
@@ -382,7 +392,8 @@ void KerfEditor::timerCallback()
         grid.setNumSlices (smp != nullptr ? smp->numSlices() : 16);
         if (smp != nullptr)
             sampleLabel.setText (smp->name + "  -  " + juce::String (smp->numSlices()) + " slices, "
-                                 + juce::String (smp->numFrames() / smp->sourceSampleRate, 2) + " s", juce::dontSendNotification);
+                                 + juce::String (smp->lengthSeconds(), 2) + " s  -  " + juce::String (smp->loopBars)
+                                 + (smp->loopBars > 1 ? " bars @ " : " bar @ ") + juce::String (smp->loopBpm, 1) + " BPM", juce::dontSendNotification);
         else
             sampleLabel.setText ("No audio loaded", juce::dontSendNotification);
     }
@@ -405,8 +416,13 @@ void KerfEditor::timerCallback()
     waveform.setCaptureInfo (processor.getCaptureState(), processor.getCaptureProgress());
     updateCaptureButton();
 
-    bpmLabel.setText (juce::String (processor.hostBpm.load(), 1) + " BPM  " + (processor.transportRunning.load() ? "PLAY" : "STOP")
-                      + "  |  " + juce::String (processor.activeVoices.load()) + " voices", juce::dontSendNotification);
+    {
+        const float st = processor.currentStretch.load();
+        juce::String text = juce::String (processor.hostBpm.load(), 1) + " BPM  " + (processor.transportRunning.load() ? "PLAY" : "STOP")
+                          + "  |  " + juce::String (processor.activeVoices.load()) + " voices";
+        if (std::abs (st - 1.0f) > 0.005f) text += "  |  x" + juce::String (st, 2);
+        bpmLabel.setText (text, juce::dontSendNotification);
+    }
 
     auto choice = [this] (const char* paramId) { return juce::roundToInt (processor.apvts.getRawParameterValue (paramId)->load()); };
     const bool transientMode = choice (id::sliceMode) == 1;

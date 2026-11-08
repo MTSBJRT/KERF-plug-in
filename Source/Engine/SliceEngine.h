@@ -12,9 +12,10 @@ enum class PitchMode { Varispeed = 0, Granular = 1 };
 struct TriggerInfo
 {
     StepData step;
-    int   lengthSamples = -1;    // host samples before release, -1 = until slice end / note-off
-    int   midiNote      = -1;
-    float velocityGain  = 1.0f;
+    int    lengthSamples = -1;   // host samples before release, -1 = until slice end / note-off
+    int    midiNote      = -1;
+    float  velocityGain  = 1.0f;
+    double stretch       = 1.0;  // playback speed factor (host tempo / loop tempo); granular mode keeps the pitch
 };
 
 struct EngineSettings
@@ -49,7 +50,7 @@ public:
         age        = ageCounter;
         granular   = s.pitchMode == PitchMode::Granular;
         pitchRatio = std::pow (2.0, (double) t.step.pitch / 12.0);
-        srcRatio   = sample->sourceSampleRate / s.sampleRate;
+        srcRatio   = sample->sourceSampleRate / s.sampleRate * juce::jlimit (0.125, 8.0, t.stretch);
         timePos    = 0.0;
         grainLen   = juce::jmax (64.0, s.grainMs * 0.001 * sample->sourceSampleRate);
         grainStart[0] = 0.0;

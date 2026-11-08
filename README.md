@@ -133,6 +133,25 @@ clock is used automatically.
   *Kerf* in the second menu. C1 = slice 1.
 - A step-by-step test checklist is in `docs/test-ableton.md` (in French).
 
+### Tempo sync and imported loops
+
+When a loop is loaded or captured, Kerf guesses its musical length (1, 2, 4, 8 or 16 bars,
+preferring the tempo closest to the project), shows it in the header (*Loop* menu to
+override), and fits the slice grid to it: one slice per 1/16 (1/8 for long loops), pattern
+length to match. With **Sync** on, every slice is time-stretched by project tempo / loop
+tempo in *Granular* pitch mode (pitch unchanged) or re-pitched in *Varispeed* mode, so the
+default pattern replays the loop exactly as recorded, locked to the DAW tempo. Turn Sync off
+to play slices at their original speed.
+
+### Hardware controllers (Maschine MK3 / Maschine+ in controller mode, Komplete Kontrol, ...)
+
+Parameters are ordered for 8-knob pages: page 1 is *Pattern, Division, Swing, Random amount,
+Randomize!, Mix, Output, Capture!*. *Randomize!* and *Capture!* are momentary buttons: map
+them to a pad or button, or automate them. In Maschine, pads in **keyboard mode** play the
+slices from the *Base* note (default C1 = pad 1). Chromatic mode plays one slice across the
+pads. Note that **Maschine+ in standalone mode cannot load third-party plug-ins**; Kerf
+works when the Maschine+ is used as a controller with the Maschine software on a computer.
+
 ### In Native Instruments Maschine 3
 
 1. After installing, open *Preferences > Plug-ins > Locations* and click *Rescan*.

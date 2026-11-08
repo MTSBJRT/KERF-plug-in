@@ -68,6 +68,11 @@ int main()
     CHECK (proc.loadFile (wav));
     auto smp = proc.getSample();
     CHECK (smp != nullptr && smp->numSlices() == 16 && smp->numFrames() == 88200);
+    // a 2 s loop at a 120 bpm project = 1 bar: grid fitted to 16 slices of 1/16, loop tempo 120
+    CHECK (smp != nullptr && smp->loopBars == 1 && std::abs (smp->loopBpm - 120.0) < 0.01);
+    CHECK (juce::roundToInt (proc.apvts.getRawParameterValue ("sliceCount")->load()) == 16);
+    CHECK (juce::roundToInt (proc.apvts.getRawParameterValue ("division")->load()) == 3);
+    CHECK (proc.getCurrentPattern().length == 16);
 
     // ---- sequencer follows the host: 1/16 at 120 bpm -> 8 steps per second
     juce::AudioBuffer<float> io (2, block);
@@ -105,6 +110,21 @@ int main()
     for (int i = 0; i < 4; ++i) { io.clear(); proc.processBlock (io, midi); midiRms += rms (io); }
     CHECK (midiRms > 0.05f);
     CHECK (proc.currentSlice.load() == 3);
+
+    // ---- tempo sync: at 90 bpm the 120 bpm loop is stretched by 0.75 (slices last longer, groove intact)
+    ph.playing = false;
+    ph.bpm = 90.0;
+    for (int i = 0; i < 40; ++i) { io.clear(); proc.processBlock (io, midi); }   // let voices die, refresh stretch
+    CHECK (std::abs (proc.currentStretch.load() - 0.75f) < 0.01f);
+    midi.addEvent (juce::MidiMessage::noteOn (1, 36, (juce::uint8) 100), 0);
+    io.clear();
+    proc.processBlock (io, midi);
+    midi.clear();
+    // nominal slice = 0.125 s = 6000 samples at 48 kHz; stretched = 8000 samples
+    int blocksAlive = 1;
+    for (int i = 0; i < 40; ++i) { io.clear(); proc.processBlock (io, midi); if (proc.activeVoices.load() > 0) blocksAlive = i + 2; }
+    CHECK (blocksAlive * block > 7000 && blocksAlive * block < 9500);
+    ph.bpm = 120.0;
 
     // ---- pattern editing + undo
     proc.snapshotForUndo();

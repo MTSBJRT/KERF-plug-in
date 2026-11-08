@@ -8,7 +8,6 @@ using namespace kerf;
 namespace
 {
 constexpr int kMaxUndo = 48;
-constexpr int kMidiBaseNote = 36; // C1 = slice 0
 } // namespace
 
 KerfProcessor::KerfProcessor()
@@ -20,14 +19,14 @@ KerfProcessor::KerfProcessor()
     for (auto& p : patterns.patterns) p.initDefault (16);
     publishPatterns();
 
-    for (auto* idStr : { id::sliceMode, id::sliceCount, id::sensitivity })
+    for (auto* idStr : { id::sliceMode, id::sliceCount, id::sensitivity, id::loopBars })
         apvts.addParameterListener (idStr, this);
 }
 
 KerfProcessor::~KerfProcessor()
 {
     cancelPendingUpdate();
-    for (auto* idStr : { id::sliceMode, id::sliceCount, id::sensitivity })
+    for (auto* idStr : { id::sliceMode, id::sliceCount, id::sensitivity, id::loopBars })
         apvts.removeParameterListener (idStr, this);
 }
 
@@ -147,10 +146,26 @@ void KerfProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBu
         }
     }
 
+    // ---- momentary trigger parameters (rising edge)
+    {
+        const bool r = raw (id::randomizeTrig) > 0.5f, c = raw (id::captureTrig) > 0.5f;
+        if (r && ! lastRandomizeTrig) { randomizeRequested.store (true); triggerAsyncUpdate(); }
+        if (c && ! lastCaptureTrig)   { captureRequested.store (true);   triggerAsyncUpdate(); }
+        lastRandomizeTrig = r;
+        lastCaptureTrig = c;
+    }
+
     // ---- snapshots for this block
     const auto& smp  = sample.get();
     const auto& pset = publishedPatterns.get();
     const int slot   = juce::jlimit (0, kNumPatterns - 1, juce::roundToInt (raw (id::patternSlot)));
+
+    // ---- tempo sync: play the loop at the project tempo without changing its groove
+    double stretch = 1.0;
+    if (smp != nullptr && raw (id::tempoSync) > 0.5f && smp->loopBpm > 1.0)
+        stretch = juce::jlimit (0.25, 4.0, bpm / smp->loopBpm);
+    blockStretch = stretch;
+    currentStretch.store ((float) stretch);
 
     // ---- MIDI
     handleMidi (midi);
@@ -205,6 +220,7 @@ void KerfProcessor::handleMidi (juce::MidiBuffer& midi)
             e.offset = meta.samplePosition;
             e.info.velocityGain = 0.25f + 0.75f * m.getFloatVelocity();
             e.info.lengthSamples = -1;
+            e.info.stretch = blockStretch;
             e.stepIndex = -1;
             if (mode == 3)
             {
@@ -214,7 +230,7 @@ void KerfProcessor::handleMidi (juce::MidiBuffer& midi)
             }
             else
             {
-                const int sliceIdx = m.getNoteNumber() - kMidiBaseNote;
+                const int sliceIdx = m.getNoteNumber() - midiBaseFromIndex (juce::roundToInt (raw (id::midiBase)));
                 if (sliceIdx < 0 || sliceIdx >= smp->numSlices()) continue;
                 e.info.step.slice = sliceIdx;
                 e.info.midiNote   = mode == 2 ? m.getNoteNumber() : -1;
@@ -260,6 +276,7 @@ void KerfProcessor::scheduleStep (const StepData& step, int stepIndex, int offse
     e.stepIndex = stepIndex;
     e.offset = offset;
     e.info.step = step;
+    e.info.stretch = blockStretch;
     if (step.slice < 0 || rng.nextFloat() > step.probability)
     {
         e.info.step.slice = -1; // rest, still advances the step display
@@ -339,7 +356,12 @@ void KerfProcessor::finishCapture()
         for (int ch = 0; ch < 2; ++ch) copy.copyFrom (ch, 0, captureBuffer, ch, 0, n);
         auto s = SampleData::create (copy, captureRate, "Capture " + juce::Time::getCurrentTime().toString (false, true, false),
                                      computeMarkers (copy, captureRate, {}));
-        publishSample (s);
+        publishSample (s, true);
+        if (auto cur = sample.peek(); cur != nullptr && loopBarsFromIndex (juce::roundToInt (raw (id::loopBars))) == 0)
+        {   // captured loops have a known length: trust it over the auto-detection
+            sample.set (cur->withLoopBars (captureBarsFromIndex (juce::roundToInt (raw (id::captureBars)))));
+            sampleVersion.fetch_add (1);
+        }
     }
     captureState.store ((int) CaptureState::idle);
     captureProgress.store (0.0f);
@@ -355,14 +377,37 @@ std::vector<int> KerfProcessor::computeMarkers (const juce::AudioBuffer<float>& 
     return existing.empty() ? gridMarkers (audio.getNumSamples(), count) : existing;
 }
 
-void KerfProcessor::publishSample (std::shared_ptr<const SampleData> s)
+void KerfProcessor::publishSample (std::shared_ptr<SampleData> s, bool fitGridToLoop)
 {
-    sample.set (std::move (s));
-    if (auto current = sample.peek(); current != nullptr && ! patternsTouched)
+    if (s != nullptr)
     {
-        for (auto& p : patterns.patterns) p.initDefault (current->numSlices());
-        publishPatterns();
+        s->setLoopBars (resolveLoopBars (s->lengthSeconds()));
+
+        // Imported loop: make one slice = one grid step so that the default pattern plays the
+        // loop exactly as recorded, in sync with the project tempo.
+        if (fitGridToLoop && juce::roundToInt (raw (id::sliceMode)) == 0)
+        {
+            int slices = s->loopBars * 16, divisionIndex = 3;             // 1/16
+            if (slices > kMaxSlices) { slices = s->loopBars * 8; divisionIndex = 1; }   // 1/8
+            if (slices > kMaxSlices) { slices = s->loopBars * 4; divisionIndex = 0; }   // 1/4
+            slices = juce::jlimit (1, kMaxSlices, slices);
+            if (auto* p = param<juce::AudioParameterInt> (id::sliceCount)) { p->beginChangeGesture(); *p = slices; p->endChangeGesture(); }
+            if (auto* p = param<juce::AudioParameterChoice> (id::division)) { p->beginChangeGesture(); *p = divisionIndex; p->endChangeGesture(); }
+            s->markers = gridMarkers (s->numFrames(), slices);
+            if (! patternsTouched)
+                for (auto& p : patterns.patterns) { p.initDefault (slices); p.length = slices; }
+            else
+                patterns.patterns[(size_t) getCurrentSlot()].length = juce::jmax (1, slices);
+            publishPatterns();
+        }
+        else if (! patternsTouched)
+        {
+            for (auto& p : patterns.patterns) p.initDefault (s->numSlices());
+            publishPatterns();
+        }
     }
+    needsReslice.store (false); // the parameter changes above must not trigger a re-slice
+    sample.set (std::move (s));
     sampleVersion.fetch_add (1);
 }
 
@@ -373,7 +418,7 @@ bool KerfProcessor::loadFile (const juce::File& file)
     const int frames = (int) std::min<juce::int64> (reader->lengthInSamples, (juce::int64) (kMaxSampleSeconds * reader->sampleRate));
     juce::AudioBuffer<float> buf ((int) juce::jmax (1u, reader->numChannels), frames);
     if (! reader->read (&buf, 0, frames, 0, true, true)) return false;
-    publishSample (SampleData::create (buf, reader->sampleRate, file.getFileNameWithoutExtension(), computeMarkers (buf, reader->sampleRate, {})));
+    publishSample (SampleData::create (buf, reader->sampleRate, file.getFileNameWithoutExtension(), computeMarkers (buf, reader->sampleRate, {})), true);
     return true;
 }
 
@@ -408,9 +453,10 @@ void KerfProcessor::reslice()
     }
 }
 
-void KerfProcessor::parameterChanged (const juce::String&, float)
+void KerfProcessor::parameterChanged (const juce::String& parameterID, float)
 {
-    needsReslice.store (true);
+    if (parameterID == id::loopBars) needsLoopUpdate.store (true);
+    else                             needsReslice.store (true);
     triggerAsyncUpdate();
 }
 
@@ -418,6 +464,35 @@ void KerfProcessor::handleAsyncUpdate()
 {
     if (captureNeedsFinish.exchange (false)) finishCapture();
     if (needsReslice.exchange (false)) reslice();
+    if (needsLoopUpdate.exchange (false)) applyLoopLength();
+    // momentary "button" parameters driven from a hardware controller or automation
+    auto resetTrigger = [this] (const char* paramId)
+    {
+        if (auto* p = param<juce::AudioParameterBool> (paramId); p != nullptr && p->get())
+        {
+            p->beginChangeGesture(); *p = false; p->endChangeGesture();
+        }
+    };
+    if (randomizeRequested.exchange (false)) { randomize(); resetTrigger (id::randomizeTrig); }
+    if (captureRequested.exchange (false))   { requestCapture(); resetTrigger (id::captureTrig); }
+}
+
+int KerfProcessor::resolveLoopBars (double seconds) const
+{
+    const int forced = loopBarsFromIndex (juce::roundToInt (raw (id::loopBars)));
+    return forced > 0 ? forced : detectLoopBars (seconds, (double) hostBpm.load());
+}
+
+void KerfProcessor::applyLoopLength()
+{
+    auto current = sample.peek();
+    if (current == nullptr) return;
+    const int bars = resolveLoopBars (current->lengthSeconds());
+    if (bars != current->loopBars)
+    {
+        sample.set (current->withLoopBars (bars));
+        sampleVersion.fetch_add (1);
+    }
 }
 
 // =============================================================================== patterns
@@ -547,7 +622,7 @@ bool KerfProcessor::exportMidi (const juce::File& file) const
     {
         const auto& st = p.steps[(size_t) i];
         if (st.slice < 0) continue;
-        const int note = juce::jlimit (0, 127, kMidiBaseNote + st.slice);
+        const int note = juce::jlimit (0, 127, midiBaseFromIndex (juce::roundToInt (raw (id::midiBase))) + st.slice);
         const int repeats = juce::jlimit (1, 8, st.repeats);
         const double interval = stepTicks / repeats;
         for (int r = 0; r < repeats; ++r)
@@ -591,6 +666,7 @@ void KerfProcessor::getStateInformation (juce::MemoryBlock& destData)
         juce::ValueTree s ("SAMPLE");
         s.setProperty ("name", smp->name, nullptr);
         s.setProperty ("rate", smp->sourceSampleRate, nullptr);
+        s.setProperty ("loopBars", smp->loopBars, nullptr);
         juce::StringArray m;
         for (int v : smp->markers) m.add (juce::String (v));
         s.setProperty ("markers", m.joinIntoString (","), nullptr);
@@ -659,7 +735,9 @@ void KerfProcessor::setStateInformation (const void* data, int sizeInBytes)
                 for (auto& tok : juce::StringArray::fromTokens (s.getProperty ("markers").toString(), ",", ""))
                     markers.push_back (tok.getIntValue());
                 patternsTouched = true; // keep the restored patterns instead of re-initialising them
-                sample.set (SampleData::create (buf, (double) s.getProperty ("rate", 44100.0), s.getProperty ("name").toString(), markers));
+                auto restored = SampleData::create (buf, (double) s.getProperty ("rate", 44100.0), s.getProperty ("name").toString(), markers);
+                restored->setLoopBars ((int) s.getProperty ("loopBars", 1));
+                sample.set (restored);
                 sampleVersion.fetch_add (1);
             }
         }

@@ -14,6 +14,8 @@ struct SampleData
     double sourceSampleRate = 44100.0;
     std::vector<int> markers;                              // sorted slice start positions, markers[0] == 0
     juce::String name;
+    int    loopBars = 1;                                   // musical length of the loop (4/4 bars)
+    double loopBpm  = 120.0;                               // tempo implied by loopBars and the length
 
     int numFrames() const noexcept  { return audio != nullptr ? audio->getNumSamples() : 0; }
     int numSlices() const noexcept  { return (int) markers.size(); }
@@ -24,6 +26,22 @@ struct SampleData
         const int start = markers[(size_t) index];
         const int end   = index + 1 < numSlices() ? markers[(size_t) index + 1] : numFrames();
         return { start, juce::jmax (start, end) };
+    }
+
+    double lengthSeconds() const noexcept { return sourceSampleRate > 0.0 ? numFrames() / sourceSampleRate : 0.0; }
+
+    /** Returns a copy with a new musical length (the audio buffer is shared). */
+    std::shared_ptr<SampleData> withLoopBars (int bars) const
+    {
+        auto copy = std::make_shared<SampleData> (*this);
+        copy->setLoopBars (bars);
+        return copy;
+    }
+    void setLoopBars (int bars) noexcept
+    {
+        loopBars = juce::jlimit (1, 64, bars);
+        const double secs = lengthSeconds();
+        loopBpm = secs > 0.0 ? loopBars * 4.0 * 60.0 / secs : 120.0;
     }
 
     /** Returns a copy with a new set of markers (the audio buffer is shared). */

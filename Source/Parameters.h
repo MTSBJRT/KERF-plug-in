@@ -2,6 +2,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "Engine/Randomizer.h"
 #include "Engine/SampleData.h"
+#include "Engine/LoopDetect.h"
 
 namespace kerf::id
 {
@@ -30,6 +31,11 @@ inline constexpr const char* sliceMode     = "sliceMode";
 inline constexpr const char* sliceCount    = "sliceCount";
 inline constexpr const char* sensitivity   = "sensitivity";
 inline constexpr const char* captureBars   = "captureBars";
+inline constexpr const char* tempoSync     = "tempoSync";
+inline constexpr const char* loopBars      = "loopBars";
+inline constexpr const char* midiBase      = "midiBase";
+inline constexpr const char* randomizeTrig = "randomizeTrig";
+inline constexpr const char* captureTrig   = "captureTrig";
 }
 
 namespace kerf
@@ -51,29 +57,46 @@ inline const juce::StringArray& captureBarChoices()
 }
 inline int captureBarsFromIndex (int i) { static const int b[] = { 1, 2, 4, 8 }; return b[juce::jlimit (0, 3, i)]; }
 
+inline const juce::StringArray& loopBarChoices()
+{
+    static const juce::StringArray n { "Auto", "1 bar", "2 bars", "4 bars", "8 bars", "16 bars" };
+    return n;
+}
+inline int loopBarsFromIndex (int i) { static const int b[] = { 0, 1, 2, 4, 8, 16 }; return b[juce::jlimit (0, 5, i)]; }
+
+inline const juce::StringArray& midiBaseChoices()
+{
+    static const juce::StringArray n { "C0 (24)", "C1 (36)", "C2 (48)", "C3 (60)" };
+    return n;
+}
+inline int midiBaseFromIndex (int i) { return 24 + 12 * juce::jlimit (0, 3, i); }
+
 inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
 {
     using namespace juce;
     std::vector<std::unique_ptr<RangedAudioParameter>> p;
     auto pct = AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return String (roundToInt (v * 100.0f)) + " %"; });
 
-    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::division, 1 }, "Division", divisionNames(), 3));
+    // ---- page 1 (hardware controllers show 8 parameters per page, in this order)
     p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::patternSlot, 1 }, "Pattern", StringArray { "A", "B", "C", "D", "E", "F", "G", "H" }, 0));
-    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::seqMode, 1 }, "Sequencer", StringArray { "Host sync", "Free run", "Off (MIDI only)" }, 0));
-    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::freeBpm, 1 }, "Free BPM", NormalisableRange<float> (40.0f, 240.0f, 0.1f), 120.0f));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::division, 1 }, "Division", divisionNames(), 3));
     p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::swing, 1 }, "Swing", NormalisableRange<float> (0.0f, 1.0f), 0.0f, pct));
-    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::midiMode, 1 }, "MIDI mode", StringArray { "Off", "One-shot", "Hold", "Chromatic" }, 1));
-    p.push_back (std::make_unique<AudioParameterInt>    (ParameterID { id::chromSlice, 1 }, "Chromatic slice", 1, kMaxSlices, 1));
-    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::pitchMode, 1 }, "Pitch mode", StringArray { "Varispeed", "Granular" }, 1));
-    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::polyphony, 1 }, "Voices", StringArray { "Poly", "Mono" }, 1));
-    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::declick, 1 }, "Declick", NormalisableRange<float> (0.5f, 50.0f, 0.1f, 0.5f), 5.0f,
-                                                         AudioParameterFloatAttributes().withLabel ("ms")));
-    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::grain, 1 }, "Grain", NormalisableRange<float> (20.0f, 150.0f, 1.0f), 60.0f,
-                                                         AudioParameterFloatAttributes().withLabel ("ms")));
+    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::rndAmount, 1 }, "Random amount", NormalisableRange<float> (0.0f, 1.0f), 0.7f, pct));
+    p.push_back (std::make_unique<AudioParameterBool>   (ParameterID { id::randomizeTrig, 1 }, "Randomize!", false));
     p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::mix, 1 }, "Mix", NormalisableRange<float> (0.0f, 1.0f), 1.0f, pct));
     p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::outGain, 1 }, "Output", NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
                                                          AudioParameterFloatAttributes().withLabel ("dB")));
-    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::rndAmount, 1 }, "Random amount", NormalisableRange<float> (0.0f, 1.0f), 0.7f, pct));
+    p.push_back (std::make_unique<AudioParameterBool>   (ParameterID { id::captureTrig, 1 }, "Capture!", false));
+    // ---- page 2: slicing and loop
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::sliceMode, 1 }, "Slice mode", StringArray { "Grid", "Transients", "Manual" }, 0));
+    p.push_back (std::make_unique<AudioParameterInt>    (ParameterID { id::sliceCount, 1 }, "Slices", 1, kMaxSlices, 16));
+    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::sensitivity, 1 }, "Sensitivity", NormalisableRange<float> (0.0f, 1.0f), 0.5f, pct));
+    p.push_back (std::make_unique<AudioParameterBool>   (ParameterID { id::tempoSync, 1 }, "Tempo sync", true));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::loopBars, 1 }, "Loop length", loopBarChoices(), 0));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::captureBars, 1 }, "Capture length", captureBarChoices(), 1));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::pitchMode, 1 }, "Pitch mode", StringArray { "Varispeed", "Granular" }, 1));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::polyphony, 1 }, "Voices", StringArray { "Poly", "Mono" }, 1));
+    // ---- page 3: random settings
     p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::rndScale, 1 }, "Random scale", scaleNames(), 0));
     p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::rndRoot, 1 }, "Root",
                                                          StringArray { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, 0));
@@ -83,10 +106,16 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
     p.push_back (std::make_unique<AudioParameterBool>   (ParameterID { id::rndSlices, 1 }, "Randomize slices", true));
     p.push_back (std::make_unique<AudioParameterBool>   (ParameterID { id::rndPitch, 1 }, "Randomize pitch", false));
     p.push_back (std::make_unique<AudioParameterBool>   (ParameterID { id::rndFx, 1 }, "Randomize FX", true));
-    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::sliceMode, 1 }, "Slice mode", StringArray { "Grid", "Transients", "Manual" }, 0));
-    p.push_back (std::make_unique<AudioParameterInt>    (ParameterID { id::sliceCount, 1 }, "Slices", 1, kMaxSlices, 16));
-    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::sensitivity, 1 }, "Sensitivity", NormalisableRange<float> (0.0f, 1.0f), 0.5f, pct));
-    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::captureBars, 1 }, "Capture length", captureBarChoices(), 1));
+    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::declick, 1 }, "Declick", NormalisableRange<float> (0.5f, 50.0f, 0.1f, 0.5f), 5.0f,
+                                                         AudioParameterFloatAttributes().withLabel ("ms")));
+    // ---- page 4: clock, MIDI, misc
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::seqMode, 1 }, "Sequencer", StringArray { "Host sync", "Free run", "Off (MIDI only)" }, 0));
+    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::freeBpm, 1 }, "Free BPM", NormalisableRange<float> (40.0f, 240.0f, 0.1f), 120.0f));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::midiMode, 1 }, "MIDI mode", StringArray { "Off", "One-shot", "Hold", "Chromatic" }, 1));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id::midiBase, 1 }, "MIDI base note", midiBaseChoices(), 1));
+    p.push_back (std::make_unique<AudioParameterInt>    (ParameterID { id::chromSlice, 1 }, "Chromatic slice", 1, kMaxSlices, 1));
+    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { id::grain, 1 }, "Grain", NormalisableRange<float> (20.0f, 150.0f, 1.0f), 60.0f,
+                                                         AudioParameterFloatAttributes().withLabel ("ms")));
     return { p.begin(), p.end() };
 }
 } // namespace kerf
