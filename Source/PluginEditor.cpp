@@ -11,7 +11,8 @@ ChopForgeEditor::ChopForgeEditor (ChopForgeProcessor& p)
 
     // ------------------------------------------------------------ header
     titleLabel.setText ("ChopForge", juce::dontSendNotification);
-    titleLabel.setFont (juce::FontOptions (22.0f, juce::Font::bold));
+    titleLabel.setFont (juce::FontOptions (25.0f, juce::Font::bold));
+    titleLabel.setComponentID ("nameplate");
     titleLabel.setColour (juce::Label::textColourId, colours::engraved);
     titleLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (titleLabel);
@@ -49,7 +50,7 @@ ChopForgeEditor::ChopForgeEditor (ChopForgeProcessor& p)
     {
         l.setText (t, juce::dontSendNotification);
         l.setFont (juce::FontOptions (11.0f, juce::Font::bold));
-        l.setColour (juce::Label::textColourId, colours::brassLight);
+        l.setColour (juce::Label::textColourId, colours::engraved);
         addAndMakeVisible (l);
     };
     makeTitle (sequenceTitle, "SEQUENCE");
@@ -70,12 +71,12 @@ ChopForgeEditor::ChopForgeEditor (ChopForgeProcessor& p)
     addAndMakeVisible (lengthSlider);
     lengthLabel.setText ("Steps", juce::dontSendNotification);
     lengthLabel.setFont (juce::FontOptions (11.0f));
-    lengthLabel.setColour (juce::Label::textColourId, colours::engravedHi);
+    lengthLabel.setColour (juce::Label::textColourId, colours::engraved);
     addAndMakeVisible (lengthLabel);
 
     patternLabel.setText ("Pattern", juce::dontSendNotification);
     patternLabel.setFont (juce::FontOptions (11.0f));
-    patternLabel.setColour (juce::Label::textColourId, colours::engravedHi);
+    patternLabel.setColour (juce::Label::textColourId, colours::engraved);
     addAndMakeVisible (patternLabel);
     for (int i = 0; i < kNumPatterns; ++i)
     {
@@ -98,7 +99,7 @@ ChopForgeEditor::ChopForgeEditor (ChopForgeProcessor& p)
     auto makeToggle = [this] (juce::ToggleButton& t, std::unique_ptr<ButtonAttachment>& att, const char* paramId, const juce::String& text)
     {
         t.setButtonText (text);
-        t.setColour (juce::ToggleButton::textColourId, colours::engravedHi);
+        t.setColour (juce::ToggleButton::textColourId, colours::engraved);
         att = std::make_unique<ButtonAttachment> (processor.apvts, paramId, t);
         addAndMakeVisible (t);
     };
@@ -127,8 +128,8 @@ ChopForgeEditor::ChopForgeEditor (ChopForgeProcessor& p)
         processor.loadFile (juce::File (autoload));
 
     setResizable (true, true);
-    setResizeLimits (960, 620, 1920, 1200);
-    setSize (1080, 720);
+    setResizeLimits (980, 660, 1920, 1200);
+    setSize (1100, 760);
     startTimerHz (30);
 }
 
@@ -148,7 +149,7 @@ void ChopForgeEditor::makeKnob (Knob& k, const char* paramId, const juce::String
     addAndMakeVisible (k.slider);
     k.label.setText (text, juce::dontSendNotification);
     k.label.setFont (juce::FontOptions (11.0f, juce::Font::bold));
-    k.label.setColour (juce::Label::textColourId, k.onWood ? colours::engraved : colours::engravedHi);
+    k.label.setColour (juce::Label::textColourId, colours::engraved);
     k.label.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (k.label);
 }
@@ -162,7 +163,7 @@ void ChopForgeEditor::makeCombo (Combo& c, const char* paramId, const juce::Stri
     addAndMakeVisible (c.box);
     c.label.setText (text, juce::dontSendNotification);
     c.label.setFont (juce::FontOptions (11.0f, juce::Font::bold));
-    c.label.setColour (juce::Label::textColourId, c.onWood ? colours::engraved : colours::engravedHi);
+    c.label.setColour (juce::Label::textColourId, colours::engraved);
     addAndMakeVisible (c.label);
 }
 
@@ -212,8 +213,8 @@ void ChopForgeEditor::resized()
     auto area = getLocalBounds().reduced (14, 10);
 
     // ---- header
-    auto header = area.removeFromTop (58);
-    titleLabel.setBounds (header.removeFromLeft (150).withTrimmedBottom (22).withTrimmedTop (2));
+    auto header = area.removeFromTop (62);
+    titleLabel.setBounds (header.removeFromLeft (170).withTrimmedBottom (24).withTrimmedTop (1));
     sampleLabel.setBounds (titleLabel.getBounds().withY (titleLabel.getBottom() + 2).withHeight (18).withWidth (300));
     bpmLabel.setBounds (header.removeFromRight (200).withTrimmedTop (4));
 
@@ -224,8 +225,8 @@ void ChopForgeEditor::resized()
     exportButton.setBounds (h.removeFromLeft (60));  h.removeFromLeft (14);
     layoutCombo (captureBars, header.withTrimmedTop (2).withX (h.getX()).withWidth (80)); h.removeFromLeft (88);
     layoutCombo (sliceMode, header.withTrimmedTop (2).withX (h.getX()).withWidth (100)); h.removeFromLeft (108);
-    layoutKnob (sliceCount, header.withX (h.getX()).withWidth (62).withHeight (58)); h.removeFromLeft (66);
-    layoutKnob (sensitivity, header.withX (h.getX()).withWidth (62).withHeight (58));
+    layoutKnob (sliceCount, header.withX (h.getX()).withWidth (70).withHeight (62)); h.removeFromLeft (74);
+    layoutKnob (sensitivity, header.withX (h.getX()).withWidth (70).withHeight (62));
 
     area.removeFromTop (8);
 
@@ -239,7 +240,7 @@ void ChopForgeEditor::resized()
     auto seqPanel = footerPanels[0].reduced (14, 8);
     auto rndPanel = footerPanels[1].reduced (14, 8);
     auto outPanel = footerPanels[2].reduced (14, 8);
-    const int knobW = 66, rowH = 74;
+    const int knobW = 78, rowH = 88;
 
     // sequence
     sequenceTitle.setBounds (seqPanel.removeFromTop (16));
@@ -272,9 +273,10 @@ void ChopForgeEditor::resized()
     randomTitle.setBounds (rndPanel.removeFromTop (16));
     {
         auto row = rndPanel.removeFromTop (rowH);
-        layoutKnob (rndAmount, row.removeFromLeft (knobW));
-        layoutKnob (rndRange, row.removeFromLeft (knobW));
-        layoutKnob (rndRest, row.removeFromLeft (knobW));
+        const int w3 = juce::jmin (knobW, (row.getWidth() - 90) / 3);
+        layoutKnob (rndAmount, row.removeFromLeft (w3));
+        layoutKnob (rndRange, row.removeFromLeft (w3));
+        layoutKnob (rndRest, row.removeFromLeft (w3));
         row.removeFromLeft (10);
         auto toggles = row.removeFromLeft (70).withTrimmedTop (2);
         rndSlices.setBounds (toggles.removeFromTop (19));
@@ -307,11 +309,12 @@ void ChopForgeEditor::resized()
     outputTitle.setBounds (outPanel.removeFromTop (16));
     {
         auto row = outPanel.removeFromTop (rowH);
-        layoutKnob (mix, row.removeFromLeft (knobW));
-        layoutKnob (outGain, row.removeFromLeft (knobW));
-        layoutKnob (declick, row.removeFromLeft (knobW));
-        layoutKnob (grain, row.removeFromLeft (knobW));
-        layoutKnob (chromSlice, row.removeFromLeft (knobW));
+        const int w5 = juce::jmin (knobW, row.getWidth() / 5);
+        layoutKnob (mix, row.removeFromLeft (w5));
+        layoutKnob (outGain, row.removeFromLeft (w5));
+        layoutKnob (declick, row.removeFromLeft (w5));
+        layoutKnob (grain, row.removeFromLeft (w5));
+        layoutKnob (chromSlice, row.removeFromLeft (w5));
     }
     outPanel.removeFromTop (4);
     {

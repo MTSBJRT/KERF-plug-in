@@ -91,7 +91,7 @@ private:
     Knob chromSlice;
 
     int lastSampleVersion = -1, lastPatternVersion = -1;
-    static constexpr int kFooterHeight = 204;
+    static constexpr int kFooterHeight = 222;
     juce::Rectangle<int> screenBounds, namePlate;
     std::array<juce::Rectangle<int>, 3> footerPanels;
 

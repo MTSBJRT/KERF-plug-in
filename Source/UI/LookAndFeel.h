@@ -27,10 +27,10 @@ namespace colours
     const juce::Colour lock         { 0xfffacc15 };
 
     // cabinet
-    const juce::Colour oakLight     { 0xffd6ad75 };
-    const juce::Colour oakMid       { 0xffb07f45 };
-    const juce::Colour oakDark      { 0xff6f4621 };
-    const juce::Colour oakPore      { 0xff3a2210 };
+    const juce::Colour oakLight     { 0xffe9cf9a };
+    const juce::Colour oakMid       { 0xffcfa568 };
+    const juce::Colour oakDark      { 0xff96693a };
+    const juce::Colour oakPore      { 0xff5a3c1c };
     const juce::Colour engraved     { 0xff2a1706 };
     const juce::Colour engravedHi   { 0xffefd3a0 };
     const juce::Colour brass        { 0xffc39a3e };
@@ -391,7 +391,7 @@ public:
             juce::Path clip;
             clip.addRoundedRectangle (r, kPanelRadius);
             g.reduceClipRegion (clip);
-            drawWood (g, area, 0.26f);
+            drawWood (g, area, 0.14f);
             // routed edge: shadow from the top and left walls
             juce::ColourGradient top (juce::Colours::black.withAlpha (0.55f), r.getX(), r.getY(), juce::Colours::transparentBlack, r.getX(), r.getY() + 12.0f, false);
             g.setGradientFill (top);
@@ -709,6 +709,20 @@ public:
         {
             g.setColour (label.findColour (juce::Label::textColourId));
             g.drawText (label.getText(), area, label.getJustificationType(), false);
+            return;
+        }
+        if (label.getComponentID() == "nameplate")
+        {
+            // deep engraving in brass: lit lower edge, shadowed upper edge, dark floor
+            const auto just = label.getJustificationType();
+            g.setColour (colours::brassLight.withAlpha (0.9f));
+            g.drawText (label.getText(), area.translated (0, 2), just, false);
+            g.setColour (colours::brassLight.withAlpha (0.5f));
+            g.drawText (label.getText(), area.translated (1, 1), just, false);
+            g.setColour (juce::Colours::black.withAlpha (0.55f));
+            g.drawText (label.getText(), area.translated (0, -1), just, false);
+            g.setColour (juce::Colour (0xff2b1c06));
+            g.drawText (label.getText(), area, just, false);
             return;
         }
         drawEngravedText (g, label.getText(), area, label.getJustificationType(),
