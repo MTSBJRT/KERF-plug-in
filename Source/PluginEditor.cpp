@@ -142,7 +142,7 @@ ChopForgeEditor::~ChopForgeEditor()
 void ChopForgeEditor::makeKnob (Knob& k, const char* paramId, const juce::String& text, const juce::String& tooltip)
 {
     k.slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 56, 14);
+    k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 54, 15);
     k.slider.setTooltip (tooltip);
     k.attachment = std::make_unique<SliderAttachment> (processor.apvts, paramId, k.slider);
     addAndMakeVisible (k.slider);
@@ -193,21 +193,18 @@ void ChopForgeEditor::paint (juce::Graphics& g)
     lookAndFeel.drawWood (g, bounds);
     cf::ui::ChopLookAndFeel::drawVarnish (g, bounds.toFloat());
 
-    // nameplate and screen
-    cf::ui::ChopLookAndFeel::drawBrassPlate (g, namePlate.toFloat());
-    cf::ui::ChopLookAndFeel::drawScreenBezel (g, screenBounds.toFloat());
+    lookAndFeel.drawBrassPlate (g, namePlate.toFloat());
+    lookAndFeel.drawScreenBezel (g, screenBounds.toFloat());
 
-    // control inlays
     for (auto& panel : footerPanels)
     {
         lookAndFeel.drawInlay (g, panel);
-        cf::ui::ChopLookAndFeel::drawScrewsAtCorners (g, panel.toFloat(), 9.0f, 4.2f);
+        lookAndFeel.drawScrewsAtCorners (g, panel.toFloat(), 9.0f, 4.5f);
     }
 
-    // cabinet assembly screws
-    cf::ui::ChopLookAndFeel::drawScrewsAtCorners (g, bounds.toFloat(), 13.0f, 6.0f);
-    const float midY = (float) screenBounds.getY() - 10.0f;
-    cf::ui::ChopLookAndFeel::drawScrew (g, (float) bounds.getCentreX(), midY, 4.5f, 0.3f);
+    lookAndFeel.drawScrewsAtCorners (g, bounds.toFloat(), 13.0f, 6.5f);
+    lookAndFeel.drawScrew (g, (float) bounds.getCentreX(), (float) screenBounds.getY() - 11.0f, 5.0f, 6);
+    lookAndFeel.drawScrew (g, (float) bounds.getCentreX(), (float) bounds.getBottom() - 13.0f, 6.5f, 1);
 }
 
 void ChopForgeEditor::resized()
@@ -242,7 +239,7 @@ void ChopForgeEditor::resized()
     auto seqPanel = footerPanels[0].reduced (14, 8);
     auto rndPanel = footerPanels[1].reduced (14, 8);
     auto outPanel = footerPanels[2].reduced (14, 8);
-    const int knobW = 60, rowH = 68;
+    const int knobW = 66, rowH = 74;
 
     // sequence
     sequenceTitle.setBounds (seqPanel.removeFromTop (16));
