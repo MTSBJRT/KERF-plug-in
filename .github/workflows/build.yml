@@ -1,0 +1,124 @@
+name: Build plug-ins
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    name: macOS (universal VST3 + AU + Standalone)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch JUCE
+        run: git clone --depth 1 --branch "$(cat scripts/juce-version.txt)" https://github.com/juce-framework/JUCE.git third_party/JUCE
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Xcode
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          -DKERF_COPY_PLUGIN=OFF
+
+      - name: Build
+        run: cmake --build build --config Release --target Kerf_VST3 Kerf_AU Kerf_Standalone KerfTests KerfHostTests -- -quiet
+
+      - name: Test
+        run: |
+          build/KerfTests_artefacts/Release/KerfTests
+          build/Release/KerfHostTests
+
+      - name: Sign (ad hoc), validate and package
+        run: |
+          set -e
+          ART=build/Kerf_artefacts/Release
+          codesign --force --deep --sign - "$ART/VST3/Kerf.vst3" "$ART/AU/Kerf.component" "$ART/Standalone/Kerf.app"
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "$ART/AU/Kerf.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          auval -v aumf Kerf Bjrt | tail -n 5
+          # installer package: puts the VST3 and AU into the system plug-in folders
+          mkdir -p pkgroot/Library/Audio/Plug-Ins/VST3 pkgroot/Library/Audio/Plug-Ins/Components
+          cp -R "$ART/VST3/Kerf.vst3" pkgroot/Library/Audio/Plug-Ins/VST3/
+          cp -R "$ART/AU/Kerf.component" pkgroot/Library/Audio/Plug-Ins/Components/
+          pkgbuild --root pkgroot --identifier com.bajartaudio.kerf --version "1.0.${{ github.run_number }}" --install-location / Kerf-macOS-Installer.pkg
+          # loose bundles for people who prefer to drag and drop
+          ditto -c -k --keepParent "$ART/VST3/Kerf.vst3" Kerf-VST3-macOS.zip
+          ditto -c -k --keepParent "$ART/AU/Kerf.component" Kerf-AU-macOS.zip
+          ditto -c -k --keepParent "$ART/Standalone/Kerf.app" Kerf-Standalone-macOS.zip
+          ls -la Kerf-*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kerf-macOS
+          path: |
+            Kerf-macOS-Installer.pkg
+            Kerf-VST3-macOS.zip
+            Kerf-AU-macOS.zip
+            Kerf-Standalone-macOS.zip
+
+  windows:
+    name: Windows (VST3 + Standalone)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch JUCE
+        shell: bash
+        run: git clone --depth 1 --branch "$(cat scripts/juce-version.txt)" https://github.com/juce-framework/JUCE.git third_party/JUCE
+
+      - name: Configure
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DKERF_COPY_PLUGIN=OFF
+
+      - name: Build
+        run: cmake --build build --config Release --target Kerf_VST3 Kerf_Standalone KerfTests KerfHostTests
+
+      - name: Test
+        shell: bash
+        run: |
+          build/KerfTests_artefacts/Release/KerfTests.exe
+          build/Release/KerfHostTests.exe
+
+      - name: Package
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/Kerf_artefacts/Release/VST3/Kerf.vst3 -DestinationPath Kerf-VST3-Windows.zip
+          Compress-Archive -Path build/Kerf_artefacts/Release/Standalone/Kerf.exe -DestinationPath Kerf-Standalone-Windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kerf-Windows
+          path: |
+            Kerf-VST3-Windows.zip
+            Kerf-Standalone-Windows.zip
+
+  release:
+    name: Publish downloads
+    needs: [macos, windows]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloads
+          merge-multiple: true
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          gh release create "$TAG" downloads/* \
+            --repo "${{ github.repository }}" \
+            --title "Kerf build ${{ github.run_number }}" \
+            --notes "Automatic build from commit ${{ github.sha }}.
+
+**macOS**: download *Kerf-macOS-Installer.pkg*, open it (first time: Réglages Système > Confidentialité et sécurité > *Ouvrir quand même*), then rescan plug-ins in your DAW. Or drag *Kerf.vst3* from *Kerf-VST3-macOS.zip* into ~/Library/Audio/Plug-Ins/VST3.
+
+**Windows**: unzip *Kerf-VST3-Windows.zip* and copy the *Kerf.vst3* folder into C:\\Program Files\\Common Files\\VST3.
+
+Unsigned build: macOS may warn the first time it is opened."

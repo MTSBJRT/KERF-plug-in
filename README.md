@@ -26,6 +26,14 @@ randomisation). Kerf contains none of their code, graphics or names.
 | Output | - | Dry/wet mix, output gain, declick fade, poly or mono (choke) voices, **MIDI file export of the pattern** |
 | Presets | - | Audio is stored **inside the plugin state (FLAC)**, so projects reopen with the chopped loop in place |
 
+## Download (no build needed)
+
+Every push to `main` builds Kerf on GitHub's macOS and Windows machines and publishes
+ready-to-use files under **Releases**: a macOS installer (`Kerf-macOS-Installer.pkg`),
+the loose `Kerf.vst3` / `Kerf.component` / `Kerf.app` bundles, and the Windows `Kerf.vst3`.
+The builds are not notarised: on macOS, allow Kerf once in *System Settings > Privacy &
+Security > Open Anyway*, then rescan plug-ins in your DAW.
+
 ## Building
 
 ### macOS - zero-setup installer (no Homebrew needed)
