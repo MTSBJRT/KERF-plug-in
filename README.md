@@ -28,7 +28,18 @@ randomisation). Kerf contains none of their code, graphics or names.
 
 ## Building
 
-### macOS (Apple Silicon or Intel) - one command
+### macOS - zero-setup installer (no Homebrew needed)
+
+```bash
+./scripts/install-macos.sh
+```
+
+Checks the Xcode Command Line Tools (asks macOS to install them if missing), downloads a
+self-contained CMake if none is present, fetches JUCE, builds, runs the tests, installs the
+VST3 and AU into both the user and system plug-in folders (the system copy asks for your
+password) and validates the AU. Then rescan plug-ins in your DAW.
+
+### macOS (Apple Silicon or Intel) - developer build with Homebrew tools
 
 ```bash
 xcode-select --install        # once, if the Command Line Tools are missing
